@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'Roboto', sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; color: #202124; }
+    
+    /* --- MENU DE CARDS (SELEÇÃO) --- */
+    .menu-grid { 
+      display: grid; 
+      grid-template-columns: repeat(4, 1fr); 
+      gap: 15px; 
+      margin-bottom: 20px; 
+    }
+    
+    .menu-item {
+      background: white; border: 1px solid #dadce0; border-radius: 8px;
+      padding: 15px; cursor: pointer; transition: all 0.2s;
+      display: flex; flex-direction: column; 
+      align-items: center; justify-content: center;
+      text-align: center; height: 90px;
+      position: relative;
+    }
+    
+    .menu-item:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-color: #1a73e8; }
+    .menu-item.active { border: 2px solid #1a73e8; background-color: #e8f0fe; }
+    
+    .icon { font-size: 32px; padding: 8px; border-radius: 50%; margin-bottom: 5px; }
+    
+    /* Cores Vibrantes para os ícones */
+    .color-blue { background-color: #e8f0fe; color: #1967d2; }
+    .color-orange { background-color: #ffe0b2; color: #e65100; }
+    .color-green { background-color: #e6f4ea; color: #137333; }
+    .color-purple { background-color: #f3e8fd; color: #9334e6; }
+
+    .menu-title { font-weight: 700; font-size: 13px; color: #3c4043; }
+    .menu-desc { font-size: 10px; color: #5f6368; }
+
+    /* --- BARRA DE FERRAMENTAS (FILTROS + BOTÕES) --- */
+    .toolbar { 
+      background: white; padding: 10px 15px; border-radius: 8px; 
+      border: 1px solid #dadce0; margin-bottom: 15px; 
+      display: none; /* Inicialmente oculto */
+      align-items: center; gap: 15px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      flex-wrap: wrap;
+    }
+    
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    label { font-size: 11px; font-weight: bold; color: #5f6368; }
+    select { padding: 6px; border: 1px solid #dadce0; border-radius: 4px; font-size: 12px; background: #fff; min-width: 80px; }
+    
+    /* Divisor vertical */
+    .divider { width: 1px; height: 30px; background: #e0e0e0; margin: 0 5px; }
+
+    /* Botões de Ação */
+    button { 
+      padding: 8px 12px; border: none; border-radius: 4px; 
+      font-weight: bold; cursor: pointer; color: white; 
+      display: flex; align-items: center; gap: 5px; 
+      font-size: 12px; transition: background 0.2s;
+    }
+    .btn-view { background-color: #1a73e8; } .btn-view:hover { background-color: #1557b0; }
+    .btn-pdf { background-color: #ea4335; }  .btn-pdf:hover { background-color: #d93025; }
+    .btn-xls { background-color: #188038; }  .btn-xls:hover { background-color: #137333; }
+    
+    /* Toggle Button para reabrir filtros */
+    #toggle-filters-btn {
+      background: #f1f3f4; color: #5f6368; border: 1px solid #dadce0;
+      width: 100%; text-align: center; padding: 5px; cursor: pointer;
+      display: none; border-radius: 4px; margin-bottom: 10px; font-size: 11px;
+    }
+    #toggle-filters-btn:hover { background: #e0e0e0; }
+
+    /* --- TABELA DE RESULTADO --- */
+    #resultado-container { 
+      background: white; padding: 0; border-radius: 8px; 
+      border: 1px solid #dadce0; display: none; overflow: auto; 
+      height: 500px; /* Altura fixa com scroll */
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
+    th, td { border: 1px solid #eee; padding: 6px; text-align: center; }
+    
+    /* Fixar Cabeçalhos e Colunas */
+    thead th { position: sticky; top: 0; z-index: 20; box-shadow: 0 1px 0 #ccc; }
+    th { background-color: #f8f9fa; text-align: left; color: #5f6368; }
+    th.col-head { text-align: center; background-color: #e8f0fe; color: #1a73e8; }
+    
+    td:first-child, th:first-child { 
+      position: sticky; left: 0; z-index: 10; background-color: #fff; border-right: 2px solid #ddd; font-weight: bold;
+    }
+    th:first-child { z-index: 30; background-color: #f8f9fa; } 
+
+    tr:nth-child(even) td { background-color: #fcfcfc; }
+    tr:hover td { background-color: #f1f3f4; }
+    
+    /* Loader Overlay */
+    .loading { 
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(255, 255, 255, 0.8); 
+      display: none; align-items: center; justify-content: center; 
+      flex-direction: column; z-index: 9999; 
+    }
+    .spinner {
+      border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; 
+      border-radius: 50%; width: 40px; height: 40px; 
+      animation: spin 1s linear infinite; margin-bottom: 10px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading-text { font-weight: bold; color: #1a73e8; }
+  </style>
+</head>
+<body>
+
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">Processando dados...</div>
+  </div>
+
+  <div class="menu-grid" id="menu-area">
+    <div class="menu-item" onclick="selectReport(1, this)">
+      <span class="material-icons icon color-blue">calendar_view_month</span>
+      <div class="menu-text"><span class="menu-title">Tipos por Dia (Local)</span></div>
+    </div>
+    
+    <div class="menu-item" onclick="selectReport(2, this)">
+      <span class="material-icons icon color-orange">apartment</span>
+      <div class="menu-text"><span class="menu-title">Tipos por Local</span></div>
+    </div>
+
+    <div class="menu-item" onclick="selectReport(3, this)">
+      <span class="material-icons icon color-green">bar_chart</span>
+      <div class="menu-text"><span class="menu-title">Visão Anual</span></div>
+    </div>
+
+    <div class="menu-item" onclick="selectReport(4, this)">
+      <span class="material-icons icon color-purple">view_week</span>
+      <div class="menu-text"><span class="menu-title">Locais por Dia</span></div>
+    </div>
+  </div>
+
+  <div id="toggle-filters-btn" onclick="toggleFilters(true)">
+    <span class="material-icons" style="font-size:14px;vertical-align:middle;">filter_list</span> Mostrar Filtros e Opções
+  </div>
+
+  <div id="toolbar-area" class="toolbar">
+    
+    <div class="filter-group" id="grp-mes">
+      <label>Mês:</label>
+      <select id="sel-mes">
+        <option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option>
+        <option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option>
+        <option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option>
+        <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+      </select>
+    </div>
+    
+    <div class="filter-group" id="grp-ano">
+      <label>Ano:</label>
+      <select id="sel-ano">
+        <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="filter-group" id="grp-local">
+      <label>Local:</label>
+      <select id="sel-local" style="max-width: 150px;">
+        <option disabled selected>Carregando...</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="btn-view" onclick="runReport('view')">
+      <span class="material-icons" style="font-size:16px;">visibility</span> Visualizar
+    </button>
+    <button class="btn-pdf" onclick="runReport('pdf')">
+      <span class="material-icons" style="font-size:16px;">picture_as_pdf</span> PDF
+    </button>
+    <button class="btn-xls" onclick="runReport('xls')">
+      <span class="material-icons" style="font-size:16px;">table_view</span> XLS
+    </button>
+
+  </div>
+
+  <div id="resultado-container"></div>
+
+  <script>
+    var currentReportId = 0;
+
+    // Inicialização ao carregar a página
+    window.onload = function() {
+      // Define mês atual
+      var d = new Date();
+      document.getElementById('sel-mes').value = d.getMonth() + 1;
+      document.getElementById('sel-ano').value = d.getFullYear(); // Ajuste dinâmico do ano
+      
+      // Carrega os locais da aba Útil
+      carregarLocais();
+    };
+
+    function carregarLocais() {
+      google.script.run
+        .withSuccessHandler(fillLocals)
+        .withFailureHandler(function(err) {
+           var s = document.getElementById('sel-local');
+           s.innerHTML = '<option>Erro ao carregar</option>';
+           alert("Erro ao buscar locais: " + err.message);
+        })
+        .obterLocaisUnicos();
+    }
+
+    function fillLocals(list) {
+      var s = document.getElementById('sel-local');
+      s.innerHTML = '';
+      
+      if (!list || list.length === 0) {
+          var o = document.createElement('option'); 
+          o.text = "Sem dados"; 
+          s.add(o);
+      } else {
+          list.forEach(function(l) {
+            var o = document.createElement('option');
+            o.text = l; 
+            o.value = l;
+            s.add(o);
+          });
+      }
+    }
+
+    function selectReport(id, el) {
+      currentReportId = id;
+      
+      // UI Visual - Ativa o Card
+      document.querySelectorAll('.menu-item').forEach(function(d) { d.classList.remove('active'); });
+      el.classList.add('active');
+      
+      toggleFilters(true); // Garante que filtros apareçam ao trocar
+      document.getElementById('resultado-container').style.display = 'none';
+
+      // Lógica de Exibição dos Filtros
+      var grpLocal = document.getElementById('grp-local');
+      var grpMes = document.getElementById('grp-mes');
+      
+      // Reset da visibilidade
+      grpLocal.style.display = 'flex';
+      grpMes.style.display = 'flex';
+
+      if (id === 2 || id === 4) {
+        // Relatórios gerais (Tipos x Locais ou Locais x Dias) -> não precisa escolher 1 local
+        grpLocal.style.display = 'none';
+      } else if (id === 3) {
+        // Visão Anual -> não precisa escolher mês, nem local
+        grpMes.style.display = 'none'; 
+        grpLocal.style.display = 'none';
+      }
+    }
+
+    function toggleFilters(show) {
+      var toolbar = document.getElementById('toolbar-area');
+      var btn = document.getElementById('toggle-filters-btn');
+      var menu = document.getElementById('menu-area');
+
+      if (show) {
+        toolbar.style.display = 'flex';
+        menu.style.display = 'grid'; // Reexibe menu
+        btn.style.display = 'none';
+      } else {
+        toolbar.style.display = 'none';
+        menu.style.display = 'none'; // Esconde menu para focar na tabela
+        btn.style.display = 'block';
+      }
+    }
+
+    function runReport(mode) {
+      var mes = document.getElementById('sel-mes').value;
+      var ano = document.getElementById('sel-ano').value;
+      var local = document.getElementById('sel-local').value;
+
+      // Validações
+      if (currentReportId === 0) { alert('Por favor, selecione um tipo de relatório no menu acima.'); return; }
+      
+      if (currentReportId === 1 && (!local || local.includes("Sem dados") || local.includes("Carregando"))) {
+        alert('Selecione um local válido para este relatório.'); return;
+      }
+
+      // Mostra Loader
+      document.getElementById('loading').style.display = 'flex';
+      
+      if (mode === 'pdf') {
+        google.script.run
+          .withSuccessHandler(function(url) {
+             document.getElementById('loading').style.display = 'none';
+             if(url) window.open(url, '_blank');
+          })
+          .withFailureHandler(showError)
+          .gerarPDFGenerico(currentReportId, mes, ano, local);
+      } 
+      else if (mode === 'xls') {
+        google.script.run
+          .withSuccessHandler(function(url) {
+             document.getElementById('loading').style.display = 'none';
+             if(url) window.open(url, '_blank');
+          })
+          .withFailureHandler(showError)
+          .gerarExcelRelatorio(currentReportId, mes, ano, local);
+      }
+      else {
+        // Modo Visualização (Tabela na Tela)
+        google.script.run
+          .withSuccessHandler(function(data) {
+             renderTable(data);
+             toggleFilters(false); // Recolhe filtros automaticamente para focar na tabela
+          })
+          .withFailureHandler(showError)
+          .processarRelatorio(currentReportId, mes, ano, local);
+      }
+    }
+
+    function renderTable(data) {
+      document.getElementById('loading').style.display = 'none';
+      var div = document.getElementById('resultado-container');
+      div.style.display = 'block';
+      
+      // Verifica se o objeto retornado é válido
+      if (!data || !data.rows || data.rows.length === 0) {
+        div.innerHTML = '<div style="text-align:center;color:#999;padding:40px;font-weight:bold;">Nenhum dado encontrado para o período/filtros selecionados.</div>';
+        return;
+      }
+
+      var html = '<table><thead><tr><th style="background:#f1f3f4;position:sticky;left:0;z-index:30;">DESCRIÇÃO</th>';
+      
+      // Cabeçalhos das Colunas
+      data.cols.forEach(function(c) { 
+        html += '<th class="col-head">' + c + '</th>'; 
+      });
+      html += '<th style="background:#3c4043;color:white;">TOTAL</th></tr></thead><tbody>';
+
+      // Linhas de Dados
+      data.rows.forEach(function(r) {
+        var soma = 0;
+        html += '<tr><td style="text-align:left;font-weight:bold;position:sticky;left:0;background:#fff;z-index:10;">' + r + '</td>';
+        
+        data.cols.forEach(function(c) {
+          // Proteção contra undefined/null na matriz
+          var val = 0;
+          if (data.matriz[r] && data.matriz[r][c]) {
+            val = data.matriz[r][c];
+          }
+          soma += val;
+          // Mostra traço se for zero, para limpar a visualização
+          html += '<td>' + (val === 0 ? '-' : val) + '</td>';
+        });
+        
+        // Coluna de Total da Linha
+        html += '<td style="font-weight:bold;background:#fce8e6;">' + soma + '</td></tr>';
+      });
+
+      // Linha de Total Geral (Rodapé da Tabela)
+      html += '<tr style="background-color:#333;color:white;font-weight:bold;"><td style="text-align:right;padding-right:10px;position:sticky;left:0;background:#333;color:white;">TOTAL GERAL</td>';
+      html += '<td colspan="' + data.cols.length + '" style="text-align:right;padding-right:20px;"></td>';
+      html += '<td style="background:#000;color:#fff;font-size:12px;">' + (data.totalGeral || 0) + '</td></tr>';
+
+      html += '</tbody></table>';
+      div.innerHTML = html;
+    }
+
+    function showError(err) {
+      document.getElementById('loading').style.display = 'none';
+      alert('Ocorreu um erro ao processar:\n' + err.message);
+    }
+  </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# 🗂️ SAMIS - Sistema Integrado de Gestão de Arquivos Médicos
+# 🗂️ Sistema Integrado de Contagem de Documentos de Arquivos
 
 ![Google Apps Script](https://img.shields.io/badge/Google_Apps_Script-4285F4?style=for-the-badge&logo=google&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)

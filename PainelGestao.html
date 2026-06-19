@@ -1,0 +1,3116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    /* =========================================
+       1. ESTILOS GERAIS E ESTRUTURA
+       ========================================= */
+    body {
+      background-color: #f4f6f8;
+      font-family: 'Segoe UI', 'Roboto', sans-serif;
+      font-size: 14px;
+      overflow: hidden; /* O scroll é interno nas áreas de conteúdo */
+    }
+
+    /* --- SIDEBAR (Barra Lateral Fixa) --- */
+    .sidebar {
+      background: #004a8d;
+      color: white;
+      height: 100vh;
+      width: 240px;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+    }
+
+    /* --- CONTEÚDO PRINCIPAL --- */
+    .main-content {
+      margin-left: 240px;
+      padding: 25px;
+      height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* --- NAVEGAÇÃO --- */
+    .nav-link {
+      color: rgba(255,255,255,0.85);
+      cursor: pointer;
+      padding: 16px 25px;
+      border-left: 5px solid transparent;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+    }
+
+    .nav-link:hover {
+      color: white;
+      background: rgba(255,255,255,0.1);
+      padding-left: 30px;
+    }
+
+    .nav-link.active {
+      background: #febd11;
+      color: #004a8d;
+      font-weight: 700;
+      border-left-color: white;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* =========================================
+       2. COMPONENTES VISUAIS
+       ========================================= */
+    .card {
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+      background: white;
+    }
+
+    .btn-hcpa {
+      background: #004a8d;
+      color: white;
+      border: none;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .btn-hcpa:hover { background: #003366; color: white; }
+    .btn-hcpa:active { transform: scale(0.98); }
+
+    .form-label {
+      font-weight: 700;
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+      letter-spacing: 0.5px;
+    }
+
+    /* --- CORREÇÃO VISUAL PARA SELECT MÚLTIPLO --- */
+    select[multiple] {
+      background-image: none;
+      padding: 5px;
+      font-size: 13px;
+      border: 1px solid #ced4da;
+      overflow-y: auto; /* garante scroll interno */
+    }
+    /* Estiliza a barra de rolagem do select */
+    select[multiple]::-webkit-scrollbar { width: 8px; }
+    select[multiple]::-webkit-scrollbar-thumb { background-color: #bbb; border-radius: 4px; }
+    select[multiple] option { padding: 4px; border-bottom: 1px solid #f0f0f0; }
+    select[multiple] option:checked { background-color: #004a8d; color: white; }
+
+    /* =========================================
+       2.1 MELHORIA UX - MULTI SELEÇÃO DE LOCAIS
+       (SEM PERDER A FUNCIONALIDADE DO MULTIPLE)
+       ========================================= */
+    .local-picker {
+      border: 1px solid #dee2e6;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 12px;
+    }
+
+    .local-picker .help-hint {
+      font-size: 12px;
+      color: #6c757d;
+    }
+
+    /* container com scroll para lista de checkboxes */
+    .local-checklist {
+      border: 1px solid #dee2e6;
+      border-radius: 10px;
+      background: #f8f9fa;
+      max-height: 220px;
+      overflow: auto;
+      padding: 8px;
+    }
+
+    .local-check-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .local-check-item:hover {
+      background: rgba(0, 74, 141, 0.08);
+    }
+
+    .local-check-item input[type="checkbox"]{
+      transform: scale(1.05);
+      cursor: pointer;
+    }
+
+    .local-check-item .tag {
+      font-size: 12px;
+      background: #e9ecef;
+      border: 1px solid #d7dadd;
+      color: #343a40;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .local-selected-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 0 0 0;
+      min-height: 34px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(0, 74, 141, 0.10);
+      border: 1px solid rgba(0, 74, 141, 0.25);
+      color: #004a8d;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .chip button {
+      border: none;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      color: #004a8d;
+      line-height: 0;
+    }
+
+    /* mantém o select original (para não quebrar nada no JS), mas escondido */
+    #f-local {
+      position: absolute;
+      left: -99999px;
+      top: -99999px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* =========================================
+       3. TABELAS E SCROLL (FIX CRÍTICO)
+       ========================================= */
+    .table-fixed-head {
+      height: 550px;
+      overflow-y: auto;
+      overflow-x: auto;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      background-color: white;
+      position: relative;
+    }
+
+    .table-fixed-head thead th {
+      position: sticky;
+      top: 0;
+      background-color: #e9ecef;
+      color: #495057;
+      z-index: 100;
+      box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
+      border-bottom: 2px solid #dee2e6;
+      padding: 10px;
+    }
+
+    .col-data { width: 140px; min-width: 140px; text-align: center; }
+    .col-local { width: 220px; min-width: 220px; }
+    .col-tipo { width: auto; min-width: 300px; }
+    .col-qtd { width: 100px; min-width: 100px; text-align: center; font-weight: bold; color: #004a8d; }
+
+    .table-insercao thead th {
+      position: sticky;
+      top: 0;
+      background-color: #f8f9fa;
+      z-index: 5;
+    }
+
+    .input-row td { padding: 4px !important; vertical-align: middle; }
+    .input-row input, .input-row select { font-size: 13px; }
+    .remove-btn { color: #dc3545; cursor: pointer; opacity: 0.7; }
+    .remove-btn:hover { opacity: 1; transform: scale(1.2); }
+
+    /* =========================================
+       4. UTILS (Loader, Toast, Debug)
+       ========================================= */
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255,255,255,0.98); z-index: 9999;
+      display: flex; justify-content: center; align-items: center; flex-direction: column;
+    }
+
+    #toast-container {
+      position: fixed; bottom: 30px; right: 30px; z-index: 10000;
+      display: flex; flex-direction: column; gap: 15px;
+    }
+    .toast-msg {
+      min-width: 300px; padding: 15px 20px; border-radius: 8px; color: white;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2); font-weight: 500;
+      display: flex; align-items: center; gap: 12px;
+      opacity: 0; transform: translateX(100%);
+      animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    .toast-info { background: linear-gradient(135deg, #004a8d, #003366); }
+    .toast-success { background: linear-gradient(135deg, #198754, #146c43); }
+    .toast-error { background: linear-gradient(135deg, #dc3545, #b02a37); }
+
+    @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+    @keyframes fadeOut { to { opacity: 0; transform: translateY(20px); } }
+
+    .debug-box {
+      background: #212529; color: #00ff00; font-family: 'Consolas', monospace;
+      padding: 15px; border-radius: 5px; margin: 20px;
+      max-height: 200px; overflow-y: auto; display: none;
+      border: 1px solid #444; z-index: 9999; position: relative;
+    }
+
+    .list-scroll {
+      max-height: 350px; overflow-y: auto; border: 1px solid #dee2e6;
+      border-radius: 8px; background-color: #f8f9fa;
+    }
+    .badge-count {
+      font-size: 0.8rem; background-color: #e9ecef; color: #333; border: 1px solid #ccc;
+      padding: 5px 10px; border-radius: 12px;
+    }
+
+    /* Colapso suave da área de Local/Unidade */
+.collapse-soft {
+  overflow: hidden;
+  transition: max-height 220ms ease, opacity 180ms ease, margin 180ms ease, padding 180ms ease;
+  max-height: 1200px;
+  opacity: 1;
+}
+
+.collapse-soft.is-collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-top-width: 0 !important;
+}
+
+/* Botão/linha de controle do painel */
+.filters-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.filters-toolbar .small-muted {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+/* =========================================
+       AUTOCOMPLETE CUSTOMIZADO (VIPs)
+       ========================================= */
+    .autocomplete-wrapper {
+      position: relative;
+    }
+    .autocomplete-list {
+      position: absolute;
+      z-index: 1050;
+      background: white;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      max-height: 220px;
+      overflow-y: auto;
+      width: 100%;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+      margin-top: 2px;
+      list-style: none;
+      padding: 0;
+      display: none;
+    }
+    .autocomplete-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      border-bottom: 1px solid #f8f9fa;
+      transition: background 0.1s;
+    }
+    .autocomplete-item.vip {
+      font-weight: 700;
+      color: #004a8d;
+      background-color: #f8fbff;
+    }
+    .autocomplete-item.active, .autocomplete-item:hover {
+      background-color: #004a8d !important;
+      color: white !important;
+    }
+    .autocomplete-item.active .text-muted, .autocomplete-item:hover .text-muted {
+      color: #d1e3f8 !important;
+    }
+
+    /* Comportamento padrão (abre para baixo) */
+    .autocomplete-list {
+      /* Mantenha o que já colocou antes, só garanta que tenha top e bottom assim: */
+      top: 100%;
+      bottom: auto;
+    }
+
+    /* NOVA CLASSE: Vira a lista para cima quando não tem espaço */
+    .autocomplete-list.open-up {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: 2px;
+      box-shadow: 0 -8px 16px rgba(0,0,0,0.15); /* A sombra também inverte para cima */
+      border-radius: 4px 4px 0 0; /* Arredonda o topo em vez da base */
+    }
+
+  /* =========================================
+       MODAL LOTE MANUAL: MODO TELA CHEIA (Lado a Lado)
+       ========================================= */
+    /* Ajusta a altura da área de rolagem */
+    #modalLoteManual.is-maximized .table-responsive {
+      max-height: calc(100vh - 180px) !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important; /* Força o scroll horizontal */
+      padding-bottom: 10px;
+    }
+
+    /* Quebra a tabela e a transforma num bloco flexível */
+    #modalLoteManual.is-maximized table {
+      display: block;
+      width: max-content; /* Deixa crescer para o lado infinitamente */
+    }
+
+    /* Esconde o thead (o cabeçalho padrão não funciona em grid lateral) */
+    #modalLoteManual.is-maximized thead {
+      display: none; 
+    }
+
+    /* A GRADE: Cria as colunas de 10 em 10 */
+    #modalLoteManual.is-maximized tbody {
+      display: grid;
+      grid-template-rows: repeat(7, auto); /* Exatamente 10 linhas de altura */
+      grid-auto-columns: minmax(400px, 45vw); /* Largura confortável para cada bloco */
+      grid-auto-flow: column; /* Quando encher 10 linhas, joga pro lado */
+      gap: 8px 20px; /* Espaçamento entre linhas(8) e colunas(20) */
+    }
+
+    /* Transforma cada linha numa "caixinha" bonita */
+    #modalLoteManual.is-maximized tr {
+      display: flex;
+      align-items: center;
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    #modalLoteManual.is-maximized td {
+      border: none;
+      padding: 6px 10px;
+    }
+
+    /* Proporção 70% nome / 30% quantidade */
+    #modalLoteManual.is-maximized td:first-child { flex: 1; }
+    #modalLoteManual.is-maximized td:last-child { width: 120px; display: flex; justify-content: flex-end; }
+
+    /* O botão flutuante de "+" vai pro final do grid */
+    #modalLoteManual.is-maximized tfoot {
+      display: block;
+      margin-top: 15px;
+      width: 100%;
+    }
+
+    /* =========================================
+       ACESSIBILIDADE: Foco no botão Maximizar
+       ========================================= */
+    #btn-max-lote:focus-visible {
+      outline: 2px solid #ffffff !important;
+      outline-offset: 3px;
+      background: rgba(255,255,255,0.3) !important;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    /* =========================================
+       EFEITO VISUAL AO ARRASTAR PDF PARA O DROPZONE
+       ========================================= */
+    .pdf-preview-container {
+      transition: all 0.3s ease; /* Garante que a transição seja suave */
+    }
+    
+    .pdf-preview-container.drag-active {
+      border-color: #4f46e5 !important;
+      background: linear-gradient(135deg, #e0e7ff 0%, #eff6ff 100%) !important;
+      transform: scale(1.01);
+      box-shadow: 0 0 20px rgba(79, 70, 229, 0.2);
+    }
+
+    /* =========================================
+       SELEÇÃO COM O MOUSE (LASSO / DRAG)
+       ========================================= */
+    .selection-box {
+      position: fixed;
+      background: rgba(79, 70, 229, 0.15); /* Azul translúcido */
+      border: 1px solid rgba(79, 70, 229, 0.8);
+      z-index: 9999;
+      pointer-events: none; /* Para não bugar o mouse */
+      display: none;
+    }
+    
+    /* Quando o quadro azul passa por cima da folha */
+    .pdf-page-wrapper.lasso-hover .pdf-canvas-container {
+      box-shadow: 0 0 0 4px #4f46e5 !important;
+      transform: translateY(-4px);
+      transition: all 0.1s ease;
+    }
+
+  /* =========================================
+       GERADOR DE ETIQUETAS (CONSOLIDADO E CENTRALIZADO)
+       ========================================= */
+
+    /* Container de Preview perfeitamente centralizado */
+    #etiq-preview-area {
+      display: flex !important;
+      flex-direction: column;
+      align-items: center; /* Centralização horizontal absoluta */
+      overflow-x: hidden !important; 
+      overflow-y: auto !important;
+      padding: 0 !important;
+    }
+
+    /* Grid Dinâmico para o Preview (A4 Paisagem) */
+    .preview-a4-landscape {
+      width: 29.7cm; 
+      height: 21cm;
+      background: white;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.25);
+      display: grid;
+      gap: 0;
+      box-sizing: border-box;
+      padding: 10mm;
+      flex-shrink: 0; /* Impede que o flexbox esmague a folha */
+      transform-origin: top center; /* Garante que a redução aconteça a partir do topo */
+    }
+
+    /* Classes Dinâmicas de Layout (Apenas 1 ou 2 por folha) */
+    .layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+    .layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+
+    /* Caixa individual de cada Rótulo */
+    .etiq-half {
+      border: 1px dashed #ccc; /* Guia de corte visual */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      padding: 30px;
+    }
+
+    /* Tipografia e Textos (Proporções Reais) */
+    .etiq-header { 
+      font-size: 2.5rem; 
+      font-weight: 800; 
+      text-transform: uppercase; 
+      margin-bottom: 1.5rem; 
+      color: #000; 
+    }
+    
+    .etiq-code { 
+      font-size: 1.5rem; 
+      font-weight: 600; 
+      margin-bottom: 1rem; 
+      color: #333; 
+    }
+    
+    /* Lote reduzido e centralizado */
+    .etiq-lote { 
+      font-size: 2.8rem; 
+      font-weight: 900; 
+      margin-bottom: 2.5rem; 
+      color: #000; 
+      white-space: nowrap; 
+      width: 100%; 
+      text-align: center; 
+    }
+
+  </style>
+</head>
+
+<body>
+
+<div id="loader" class="loading-overlay">
+  <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status"></div>
+  <strong class="mt-4 text-primary fs-5">Inicializando SAMIS...</strong>
+  <div id="loader-msg" class="text-muted mt-2">Conectando ao Backend...</div>
+  <button class="btn btn-sm btn-outline-secondary mt-4" onclick="toggleDebug()">
+     <i class="material-icons align-middle" style="font-size:16px">bug_report</i> Ver Logs de Erro
+  </button>
+  <div id="fatal-error-container" class="mt-3 w-50"></div>
+</div>
+
+<div id="toast-container"></div>
+
+<div id="debug-area" class="debug-box">
+  <strong>CONSOLE DE DEBUG:</strong><br>
+  <span id="debug-log"></span>
+</div>
+
+<div class="sidebar">
+  <div class="p-4 text-center border-bottom border-white border-opacity-10">
+    <h4 class="fw-bold m-0 text-white" style="letter-spacing: 1px;">CONTAGEM</h4>
+    <small class="text-white text-opacity-50">GESTÃO 2026</small>
+  </div>
+
+  <nav class="nav flex-column mt-4 w-100 px-2">
+    <a class="nav-link active" onclick="nav('tab-insercao', this)">
+      <i class="material-icons align-middle me-3">playlist_add</i> Inserção em Lote
+    </a>
+    <a class="nav-link" onclick="nav('tab-visao', this)">
+      <i class="material-icons align-middle me-3">manage_search</i> Visão Global
+    </a>
+    <a class="nav-link" onclick="nav('tab-cadastro', this)">
+      <i class="material-icons align-middle me-3">dns</i> Cadastros Base
+    </a>
+    <a class="nav-link" onclick="nav('tab-graficos', this)">
+      <i class="material-icons align-middle me-3">insights</i> Analytics
+    </a>
+    <a class="nav-link" onclick="abrirEstudioPdf(this)">
+      <i class="material-icons align-middle me-3">content_cut</i> Ferramentas (PDF)
+    </a>
+    <a class="nav-link" onclick="nav('tab-etiquetas', this)">
+      <i class="material-icons align-middle me-3">label_important</i> Etiquetas
+    </a>
+  </nav>
+
+  <div class="mt-auto text-center pb-4 text-white text-opacity-25" style="font-size: 11px;">
+    HCPA &copy; 2026<br>Sistema Integrado
+  </div>
+</div>
+
+<div class="main-content">
+
+  <div id="tab-insercao" class="tab-pane">
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+      <div>
+        <h4 class="text-primary fw-bold m-0">📥 Lançamento de Ocorrências</h4>
+        <small class="text-muted">Adicione múltiplas linhas e salve tudo de uma vez.</small>
+      </div>
+
+      <div class="d-flex gap-2">
+        <input type="file" id="input-ocr-file" multiple accept="application/pdf, image/*" style="display:none" onchange="processarArquivosSelecionados(this)">
+        <button class="btn btn-warning text-dark fw-bold px-4 py-2 shadow-sm" onclick="document.getElementById('input-ocr-file').click()">
+          <i class="material-icons align-middle me-2">document_scanner</i> OCR
+        </button>
+
+        <button class="btn btn-info text-white fw-bold px-4 py-2 shadow-sm" onclick="abrirModalLoteManual()">
+          <i class="material-icons align-middle me-2">list_alt</i> Lote
+        </button>
+
+        <button class="btn text-white fw-bold px-4 py-2 shadow-sm" style="background-color: #f06a6a;" onclick="abrirModalControles()">
+          <i class="material-icons align-middle me-2">fact_check</i> Controles
+        </button>
+
+        <button class="btn btn-success px-4 py-2 shadow-sm" onclick="adicionarLinha()">
+          <i class="material-icons align-middle me-2">add</i> Linha
+        </button>
+      </div>
+    </div>
+
+    <div class="card p-0 overflow-hidden border">
+      <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+        <table class="table table-bordered mb-0 table-insercao">
+          <thead class="table-light">
+            <tr>
+              <th class="col-data">Data</th>
+              <th class="col-local">Local / Unidade</th>
+              <th class="col-tipo">Tipo Documental</th>
+              <th class="col-qtd">Qtd</th>
+            </tr>
+          </thead>
+          <tbody id="lista-lancamentos"></tbody>
+        </table>
+      </div>
+
+      <div class="p-3 bg-light border-top d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+          <i class="material-icons align-middle fs-6 text-primary">info</i>
+          <span id="contador-linhas">0 linhas prontas para envio</span>
+        </div>
+        <button type="button" class="btn btn-hcpa px-5 py-2 shadow-sm" onclick="salvarTudo()">
+          <i class="material-icons align-middle me-2">save</i> SALVAR TODOS E LIMPAR
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-visao" class="tab-pane" style="display:none;">
+    <h4 class="mb-4 border-bottom pb-2 text-primary fw-bold">🔍 Consulta Global de Registros</h4>
+
+    <!-- NOVO LAYOUT: filtros + seletor de locais com checklist + total -->
+    <div class="card p-4 bg-white border shadow-sm">
+      <div class="row g-3 align-items-start">
+        <div class="col-lg-2 col-md-3">
+          <label class="form-label">Data Início</label>
+          <input type="date" id="f-inicio" class="form-control form-control-sm">
+        </div>
+
+        <div class="col-lg-2 col-md-3">
+          <label class="form-label">Data Fim</label>
+          <input type="date" id="f-fim" class="form-control form-control-sm">
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="d-flex justify-content-between align-items-end mb-1">
+            <label class="form-label mb-0">Busca no Tipo (Texto)</label>
+          </div>
+          <input type="text" id="f-tipo-txt" class="form-control form-control-sm" placeholder="Ex: Biopsia...">
+          <div class="form-check form-switch mt-1 mb-0" title="Pesquisar exatamente este termo (sem palavras antes ou depois)">
+            <input class="form-check-input" type="checkbox" id="f-tipo-exato" style="transform: scale(0.85); margin-top: 0.15rem;">
+            <label class="form-check-label text-muted" for="f-tipo-exato" style="font-size: 11px; user-select: none;">Termo Exato</label>
+          </div>
+        </div>
+
+        <div class="col-lg-2 col-md-4">
+          <label class="form-label">Limite de Busca</label>
+          <select id="f-limite" class="form-select form-select-sm">
+            <option value="50">Últimos 50</option>
+            <option value="100" selected>Últimos 100</option>
+            <option value="500">Últimos 500</option>
+            <option value="todos">TUDO (Lento)</option>
+          </select>
+        </div>
+
+        <div class="col-lg-1 col-md-2 d-flex align-items-end">
+          <button class="btn btn-primary btn-sm w-100 py-2" style="height: 40px;" onclick="buscarRegistros()">
+            <i class="material-icons align-middle">search</i>
+          </button>
+        </div>
+
+        <div class="col-lg-2 col-md-6 d-flex align-items-end">
+          <!-- NOVO: Total de itens (soma da coluna Qtd) -->
+          <div class="w-100">
+            <label class="form-label">Total de itens</label>
+            <input type="text" id="f-total-itens" class="form-control form-control-sm" value="0" readonly>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="local-picker">
+  <div class="filters-toolbar">
+    <div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="form-label mb-0">Local / Unidade</span>
+        <i class="material-icons text-muted" style="font-size:14px; cursor:help;"
+           title="Use os botões para selecionar rápido ou marque/desmarque na lista.">help_outline</i>
+      </div>
+      <div class="help-hint">Dica: você pode filtrar a lista por texto e usar “Selecionar visíveis/limpar”.</div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <span class="small-muted">
+        <strong id="locais-count-selected">0</strong> selecionado(s)
+      </span>
+
+      <button id="btn-toggle-locais" class="btn btn-sm btn-outline-secondary" type="button"
+              onclick="togglePainelLocais()">
+        <i class="material-icons align-middle" style="font-size:18px;">unfold_less</i>
+        <span id="btn-toggle-locais-text">Recolher</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- SELECT ORIGINAL (mantido escondido para compatibilidade) -->
+  <select id="f-local" class="form-select form-select-sm" multiple>
+    <option value="todos" selected>Todos</option>
+  </select>
+
+  <!-- NOVO: área colapsável -->
+  <div id="painel-locais" class="collapse-soft mt-2">
+
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+      <div class="d-flex gap-2 flex-wrap">
+        <div class="input-group input-group-sm" style="min-width: 260px;">
+          <span class="input-group-text bg-white">
+            <i class="material-icons" style="font-size:18px;">filter_alt</i>
+          </span>
+          <input type="text" id="f-local-filter" class="form-control" placeholder="Filtrar locais...">
+        </div>
+
+        <button class="btn btn-sm btn-outline-primary" onclick="locaisSelecionarTodosVisiveis(true)">
+          Selecionar visíveis
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="locaisSelecionarTodosVisiveis(false)">
+          Limpar visíveis
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="locaisLimparTudo()">
+          Limpar tudo
+        </button>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-2">
+      <div class="col-lg-7">
+        <div id="local-checklist" class="local-checklist">
+          <div class="text-muted small p-2">Carregando locais...</div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="form-label mb-0">Selecionados</div>
+        <div id="local-selected-chips" class="local-selected-chips"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+ 
+    </div>
+
+      </div>
+    </div>
+
+    <div class="card shadow-sm border h-100">
+      <div class="table-fixed-head">
+        <table class="table table-striped table-hover mb-0 align-middle" style="font-size: 13px;">
+          <thead class="table-light">
+            <tr>
+              <th class="col-data" style="cursor: pointer; user-select: none;" onclick="ordenarTabelaVisao(0)" title="Ordenar por Data">
+                Data <i class="material-icons align-middle text-muted" style="font-size: 16px;" id="sort-icon-0">swap_vert</i>
+              </th>
+              <th class="col-local" style="cursor: pointer; user-select: none;" onclick="ordenarTabelaVisao(1)" title="Ordenar por Local">
+                Local / Unidade <i class="material-icons align-middle text-muted" style="font-size: 16px;" id="sort-icon-1">swap_vert</i>
+              </th>
+              <th class="col-tipo" style="cursor: pointer; user-select: none;" onclick="ordenarTabelaVisao(2)" title="Ordenar por Tipo">
+                Tipo Documental <i class="material-icons align-middle text-muted" style="font-size: 16px;" id="sort-icon-2">swap_vert</i>
+              </th>
+              <th class="col-qtd" style="cursor: pointer; user-select: none;" onclick="ordenarTabelaVisao(3)" title="Ordenar por Quantidade">
+                Qtd <i class="material-icons align-middle text-muted" style="font-size: 16px;" id="sort-icon-3">swap_vert</i>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="tb-visao">
+            <tr>
+              <td colspan="4" class="text-center p-5 text-muted">
+                <i class="material-icons fs-1 text-secondary opacity-25">search</i><br>
+                Utilize os filtros acima para pesquisar.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-footer bg-white border-top small text-muted d-flex justify-content-between align-items-center">
+        <span id="resumo-busca"><i class="material-icons align-middle fs-6 me-1">info</i> Aguardando pesquisa...</span>
+        <span>Fonte: Aba "Registro de Ocorrências"</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-cadastro" class="tab-pane" style="display:none;">
+  
+  <div class="d-flex justify-content-between align-items-center border-bottom mb-4 pb-2">
+    <h4 class="text-primary fw-bold mb-0">⚙️ Gestão de Cadastros (Aba Útil)</h4>
+    <button class="btn btn-sm btn-outline-warning text-dark fw-bold shadow-sm d-flex align-items-center" onclick="recalcularRanking()">
+      <i class="material-icons fs-6 me-1">auto_graph</i> Atualizar Ranking de Autocompletar
+    </button>
+  </div>
+
+  <div class="row g-4">
+    
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center py-3">
+          <span>LOCAIS / UNIDADES</span>
+          <span class="badge badge-count" id="count-locais">0</span>
+        </div>
+        <div class="card-body">
+          <div class="input-group mb-3">
+            <input type="text" id="add-local" class="form-control" placeholder="Novo Local (Ex: 12ºN)">
+            <button class="btn btn-success px-3" onclick="cadastrar('local')">
+              <i class="material-icons align-middle">add</i>
+            </button>
+          </div>
+          <div class="list-scroll p-2">
+            <ul class="list-group list-group-flush small" id="lista-locais">
+              <li class="list-group-item text-muted">Carregando...</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center py-3">
+          <span>TIPOS DOCUMENTAIS</span>
+          <span class="badge badge-count" id="count-tipos">0</span>
+        </div>
+        <div class="card-body">
+          <div class="input-group mb-3">
+            <input type="text" id="add-tipo" class="form-control" placeholder="Novo Tipo (Ex: TERMO)">
+            <button class="btn btn-success px-3" onclick="cadastrar('tipo')">
+              <i class="material-icons align-middle">add</i>
+            </button>
+          </div>
+          <div class="list-scroll p-2">
+            <ul class="list-group list-group-flush small" id="lista-tipos">
+              <li class="list-group-item text-muted">Carregando...</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+  <div id="tab-graficos" class="tab-pane" style="display:none;">
+    <h4 class="mb-4 border-bottom pb-2 text-primary fw-bold">📊 Analytics Personalizado</h4>
+    <div class="card p-4 mb-4 border-primary border-opacity-25 shadow-sm">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Eixo X (Agrupamento)</label>
+          <select id="g-eixo" class="form-select">
+            <option value="tempo">Evolução Mensal (Tempo)</option>
+            <option value="local">Ranking por Local (Top 20)</option>
+            <option value="tipo">Ranking por Tipo (Top 20)</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Tipo de Visualização</label>
+          <select id="g-tipo-chart" class="form-select">
+            <option value="bar">Gráfico de Barras</option>
+            <option value="line">Gráfico de Linha</option>
+            <option value="pie">Gráfico de Pizza</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Data Inicial</label>
+          <input type="date" id="g-inicio" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Data Final</label>
+          <input type="date" id="g-fim" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <button class="btn btn-hcpa w-100 py-2" onclick="gerarGrafico()">
+            <i class="material-icons align-middle me-2">bar_chart</i> Gerar Gráfico
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="card p-4 shadow-sm">
+      <div style="height: 450px; position: relative;">
+        <canvas id="chartCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-ferramentas" class="tab-pane" style="display:none;">
+    <div id="pdf-render-zone"></div>
+  </div>
+
+<template id="pdf-raw-source">
+  <?!= estudioPdfComponent ?>
+</template>
+
+<div id="tab-etiquetas" class="tab-pane" style="display:none;">
+    <h4 class="mb-4 border-bottom pb-2 text-primary fw-bold">🏷️ Etiquetas</h4>
+    
+    <div class="card p-4 shadow-sm mb-4">
+      <div class="row g-3 align-items-end">
+        
+        <div class="col-md-2">
+          <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Rótulo</label>
+          <select id="etiq-tipo" class="form-select" onchange="aoMudarTipoRotulo()">
+            <option value="Complementar">Complementar</option>
+            <option value="Convênios">Convênios</option>
+          </select>
+        </div>
+        
+        <div class="col-md-2">
+          <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Código</label>
+          
+          <div id="container-codigo-sel">
+            <select id="etiq-codigo-sel" class="form-select fw-bold text-primary" onchange="toggleCodigoLivre()">
+              <option value="" disabled selected>--</option>
+              <option value="02">02</option>
+              <option value="03">03</option>
+              <option value="10">10</option>
+              <option value="14">14</option>
+              <option value="outro">Outro...</option>
+            </select>
+          </div>
+          
+          <div id="container-codigo-manual" class="input-group" style="display:none;">
+            <input type="number" id="etiq-codigo-manual" class="form-control fw-bold text-primary" placeholder="Nº" oninput="buscarSugestaoEtiqueta()">
+            <button class="btn btn-outline-secondary px-2 d-flex align-items-center" type="button" onclick="cancelarCodigoLivre()" title="Voltar para a lista">
+              <i class="material-icons" style="font-size: 16px;">close</i>
+            </button>
+          </div>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Etiquetas</label>
+          <select id="etiq-layout" class="form-select">
+            <option value="1">1 por pag</option>
+            <option value="2" selected>2 por pag</option>
+          </select>
+        </div>
+        
+        <div class="col-md-2">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label text-muted fw-bold mb-0" style="font-size: 0.85rem;">Nº Inicial</label>
+            <span class="badge bg-light text-success border border-success" id="etiq-hint" style="font-size: 0.65rem;">Calculando...</span>
+          </div>
+          <input type="number" id="etiq-inicial" class="form-control">
+        </div>
+        
+        <div class="col-md-2">
+          <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.85rem;">Qtd Total</label>
+          <input type="number" id="etiq-qtd" class="form-control fw-bold" value="10">
+        </div>
+        
+        <div class="col-md-2">
+          <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center" onclick="gerarPreviewEtiquetas()">
+            <i class="material-icons align-middle me-1">visibility</i> Preview
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="card p-0 shadow-sm border overflow-hidden">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+        <span class="small fw-bold text-secondary">Visualização (A4)</span>
+        <button class="btn btn-success btn-sm fw-bold rounded-pill px-4" id="btn-imprimir-etiq" style="display:none;" onclick="imprimirEtiquetas()">
+          <i class="material-icons align-middle me-1">print</i> IMPRIMIR
+        </button>
+      </div>
+      <div id="etiq-preview-area" class="bg-secondary bg-opacity-10" style="height: 52vh;">
+          </div>
+
+        <div class="mt-3 text-end">
+      <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm d-inline-flex align-items-center fw-bold" onclick="abrirModalHistoricoEtiquetas()">
+        <i class="material-icons fs-6 me-1">history</i> Ver Histórico de Impressões
+      </button>
+    </div>
+
+    </div>
+  </div>
+
+<!-- Modal Preview — Tela Cheia (correção 1) -->
+<div class="modal fade" id="modalPdfPreview" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content" style="background: rgba(15, 23, 42, 0.95); border: none;">
+      
+      <div class="modal-header border-0 pb-0 justify-content-end px-4 pt-3" style="position: absolute; width: 100%; z-index: 10;">
+        <button type="button" class="btn btn-light rounded-circle p-2 shadow" data-bs-dismiss="modal">
+          <i class="material-icons align-middle">close</i>
+        </button>
+      </div>
+
+      <div class="modal-body d-flex align-items-center justify-content-center p-2">
+        <img id="img-large-preview" src="" alt="Preview"
+          style="max-width: 98vw; max-height: 98vh; width: auto; height: auto; object-fit: contain; 
+                 box-shadow: 0 0 50px rgba(0,0,0,0.5); border-radius: 4px; background: white;">
+        <div id="lupa-zoom"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalOCR" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold"><i class="material-icons align-middle me-2">find_in_page</i>Conferência OCR</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="alert alert-info py-2 small">
+          <i class="material-icons align-middle fs-6">info</i>
+          Verifique se os Tipos Documentais foram identificados corretamente antes de importar.
+        </div>
+        <div class="row mb-3 align-items-end p-2 bg-white rounded border mx-0">
+          <div class="col-md-6">
+            <label class="form-label small mb-1">Aplicar Local Padrão para este Lote:</label>
+            <select id="ocr-local-padrao" class="form-select form-select-sm">
+              <option value="">-- Selecione para preencher todos --</option>
+            </select>
+          </div>
+          <div class="col-md-6 text-end">
+            <small class="text-muted" id="ocr-status-count">0 itens encontrados</small>
+          </div>
+        </div>
+        <div class="table-responsive border rounded bg-white" style="max-height: 400px;">
+          <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-secondary sticky-top">
+              <tr>
+                <th width="5%">Importar</th>
+                <th>Tipo Documental (Detectado)</th>
+                <th width="15%">Qtd</th>
+              </tr>
+            </thead>
+            <tbody id="lista-preview-ocr"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary fw-bold" onclick="confirmarImportacaoOCR()">
+          <i class="material-icons align-middle me-2">playlist_add_check</i> Confirmar e Importar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalLoteManual" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title fw-bold"><i class="material-icons align-middle me-2">checklist_rtl</i> Lançamento em Lote (Lista Padrão)</h5>
+        
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-sm text-white border-0 shadow-none px-2" style="background: rgba(255,255,255,0.2);" id="btn-max-lote" onclick="toggleMaximizeLote()" title="Maximizar/Restaurar">
+            <i class="material-icons align-middle">fullscreen</i>
+          </button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+      
+      <div class="modal-body bg-light">
+        <div class="p-3 bg-white rounded border mb-3">
+          <label class="form-label fw-bold text-primary">Selecione o Local / Unidade para este lote:</label>
+          <select id="lote-manual-local" class="form-select">
+            <option value="">-- Selecione o Local --</option>
+          </select>
+        </div>
+        
+        <div class="table-responsive border rounded bg-white" style="max-height: 500px;">
+          <table class="table table-sm table-hover mb-0 align-middle table-striped">
+            <thead class="table-light sticky-top" style="z-index: 10;">
+              <tr>
+                <th style="width: 70%; padding-left: 15px;">Tipo Documental</th>
+                <th style="width: 30%;">Quantidade</th>
+              </tr>
+            </thead>
+            <tbody id="lista-lote-manual"></tbody>
+            
+            <tfoot class="table-light sticky-bottom" style="z-index: 10;">
+              <tr>
+                <td colspan="2" class="text-center p-2 border-top">
+                  <button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3" onclick="adicionarItemExtraLoteManual()">
+                    <i class="material-icons align-middle" style="font-size: 16px;">add</i> Adicionar Outro Documento
+                  </button>
+                </td>
+              </tr>
+            </tfoot>
+            
+          </table>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary fw-bold" onclick="confirmarLoteENovoLocal()">
+          <i class="material-icons align-middle me-1">add_location</i> Novo Local
+        </button>
+        <button type="button" class="btn btn-info text-white fw-bold" onclick="confirmarLoteManual()">
+          <i class="material-icons align-middle me-2">save_alt</i> Inserir Itens Preenchidos
+        </button>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalControles" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header text-white" style="background-color: #f06a6a;">
+        <h5 class="modal-title fw-bold"><i class="material-icons align-middle me-2">manage_search</i>Buscar Notas de Sala (Controles)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="alert alert-secondary py-2 small mb-3">
+          <i class="material-icons align-middle fs-6">info</i>
+          O sistema varrerá a planilha do mês selecionado buscando as "Notas de Sala" identificadas pelos códigos <strong>1409</strong> (CCA, Hemodinâmica e Bloco) nas colunas R e S.
+        </div>
+        
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col-md-5">
+            <label class="form-label">Selecione o Mês Desejado:</label>
+            <select id="controles-mes" class="form-select">
+              <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+              <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+              <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <button class="btn w-100 fw-bold text-white" style="background-color: #d15656;" onclick="acionarBuscaControles()">
+              <i class="material-icons align-middle me-1">search</i> Varrer Planilha
+            </button>
+          </div>
+        </div>
+
+        <div id="loader-controles" class="py-2" style="display:none;">
+          <div class="d-flex align-items-center mb-2">
+            <div class="spinner-border spinner-border-sm text-danger me-2" role="status"></div>
+            <strong class="text-danger">Processando na Nuvem...</strong>
+          </div>
+          <div id="live-log-box" class="p-2 rounded shadow-sm" style="background-color: #1e1e1e; color: #00ff00; font-family: 'Consolas', monospace; font-size: 12px; height: 180px; overflow-y: auto; border: 1px solid #444;">
+             Iniciando conexão...
+          </div>
+        </div>
+
+        <div class="table-responsive border bg-white rounded" style="max-height: 300px; display:none;" id="box-table-controles">
+          <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-secondary sticky-top">
+              <tr>
+                <th width="5%"><input type="checkbox" id="chk-todos-controles" checked onclick="toggleControlesCheckbox(this)"></th>
+                <th width="25%">Data da Aba</th>
+                <th width="35%">Local Destino</th>
+                <th width="15%">Qtd Agrupada</th>
+              </tr>
+            </thead>
+            <tbody id="lista-preview-controles"></tbody>
+          </table>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn text-white fw-bold" style="background-color: #f06a6a;" onclick="confirmarImportacaoControles()" id="btn-import-controles" disabled>
+          <i class="material-icons align-middle me-1">input</i> Importar Selecionados
+        </button>
+      </div>
+    </div> </div> </div> <div class="modal fade" id="modalHistoricoEtiquetas" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content shadow-lg border-0">
+      <div class="modal-header bg-secondary text-white">
+        <h5 class="modal-title fw-bold d-flex align-items-center">
+          <i class="material-icons me-2">history</i> Histórico de Impressões (Log)
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 align-middle text-center table-striped">
+            <thead class="table-secondary sticky-top" style="z-index: 10;">
+              <tr>
+                <th class="py-2">Data e Hora</th>
+                <th class="py-2">Tipo</th>
+                <th class="py-2">Código</th>
+                <th class="py-2">Nº Inicial</th>
+                <th class="py-2">Nº Final</th>
+                <th class="py-2">Quantidade</th>
+              </tr>
+            </thead>
+            <tbody id="lista-historico-etiquetas">
+              </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-light py-2">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalRenomear" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Renomear Segmento</h5>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="inputNomeSegmento" class="form-control" placeholder="Ex: Relatório Mensal">
+        <input type="hidden" id="indexSegmentoAtual">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarNomeSegmento()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* =========================
+     FUNÇÕES DE DEBUG
+     ========================= */
+  function log(msg){
+    console.log(msg);
+    const logEl = document.getElementById("debug-log");
+    if (logEl) logEl.innerHTML += msg + "<br>";
+    const debugBox = document.getElementById("debug-area");
+    if (debugBox) debugBox.scrollTop = debugBox.scrollHeight;
+  }
+
+  function toggleDebug(){
+    const area = document.getElementById("debug-area");
+    area.style.display = (area.style.display === "none" || !area.style.display) ? "block" : "none";
+  }
+  
+  let PAINEL_LOCAIS_COLLAPSED = false;
+
+function setPainelLocaisCollapsed(collapsed, { silent = false } = {}){
+  const painel = document.getElementById("painel-locais");
+  const btnText = document.getElementById("btn-toggle-locais-text");
+  const btnIcon = document.querySelector("#btn-toggle-locais i.material-icons");
+
+  if (!painel || !btnText || !btnIcon) return;
+
+  PAINEL_LOCAIS_COLLAPSED = !!collapsed;
+
+  if (PAINEL_LOCAIS_COLLAPSED){
+    painel.classList.add("is-collapsed");
+    btnText.innerText = "Expandir";
+    btnIcon.innerText = "unfold_more";
+  } else {
+    painel.classList.remove("is-collapsed");
+    btnText.innerText = "Recolher";
+    btnIcon.innerText = "unfold_less";
+  }
+
+  if (!silent){
+    // opcional: guardar preferencia (se quiser)
+    // localStorage.setItem("samis_locais_collapsed", PAINEL_LOCAIS_COLLAPSED ? "1" : "0");
+  }
+}
+
+function togglePainelLocais(){
+  setPainelLocaisCollapsed(!PAINEL_LOCAIS_COLLAPSED);
+}
+
+
+  /* =========================
+     VARIÁVEIS GLOBAIS
+     ========================= */
+  let DB = { locais: [], tipos: [] };
+  let myChart = null;
+
+  /* =========================
+     SEGURANÇA/ROBUSTEZ: ESCAPAR TEXTO
+     ========================= */
+  function esc(s){
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  /* =========================
+     UX MULTI-LOCAIS (CHECKLIST)
+     ========================= */
+  function normalizarTexto(str){
+    return String(str ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }
+
+  function getSelectLocais(){
+    return document.getElementById("f-local");
+  }
+
+  function getAllLocaisFromSelect(){
+    const sel = getSelectLocais();
+    return Array.from(sel.options)
+      .map(o => o.value)
+      .filter(v => v && v !== "todos");
+  }
+
+  function getSelectedLocaisFromSelect(){
+    const sel = getSelectLocais();
+    const vals = Array.from(sel.selectedOptions).map(o => o.value);
+    if (vals.includes("todos") || vals.length === 0) return [];
+    return vals;
+  }
+
+  function setSelectLocaisSelection(values){
+    const sel = getSelectLocais();
+    const set = new Set(values || []);
+
+    Array.from(sel.options).forEach(opt => {
+      if (opt.value === "todos") {
+        opt.selected = (set.size === 0);
+      } else {
+        opt.selected = set.has(opt.value);
+      }
+    });
+  }
+
+  function locaisLimparTudo(){
+    setSelectLocaisSelection([]);
+    renderLocalChecklist();
+    renderLocalChips();
+  }
+
+  function locaisSelecionarTodosVisiveis(flag){
+    const all = getAllLocaisFromSelect();
+    const filtro = normalizarTexto(document.getElementById("f-local-filter").value);
+    const selected = new Set(getSelectedLocaisFromSelect());
+
+    const visiveis = all.filter(l => normalizarTexto(l).includes(filtro));
+    if (flag){
+      visiveis.forEach(v => selected.add(v));
+    } else {
+      visiveis.forEach(v => selected.delete(v));
+    }
+
+    setSelectLocaisSelection(Array.from(selected));
+    renderLocalChecklist();
+    renderLocalChips();
+  }
+
+  function toggleLocalValue(val, checked){
+    const selected = new Set(getSelectedLocaisFromSelect());
+    if (checked) selected.add(val);
+    else selected.delete(val);
+
+    setSelectLocaisSelection(Array.from(selected));
+    renderLocalChecklist();
+    renderLocalChips();
+  }
+
+  function renderLocalChecklist(){
+    const wrap = document.getElementById("local-checklist");
+    if (!wrap) return;
+
+    const all = getAllLocaisFromSelect();
+    const selected = new Set(getSelectedLocaisFromSelect());
+    const filtro = normalizarTexto(document.getElementById("f-local-filter").value);
+
+    const filtrados = all.filter(l => normalizarTexto(l).includes(filtro));
+
+    if (filtrados.length === 0){
+      wrap.innerHTML = `<div class="text-muted small p-2">Nenhum local encontrado com este filtro.</div>`;
+      return;
+    }
+
+    wrap.innerHTML = filtrados.map(l => {
+      const isChecked = selected.has(l);
+      return `
+        <label class="local-check-item">
+          <input type="checkbox" ${isChecked ? "checked" : ""} onchange="toggleLocalValue('${esc(l)}', this.checked)">
+          <span>${esc(l)}</span>
+          <span class="tag">${isChecked ? "selecionado" : "disponível"}</span>
+        </label>
+      `;
+    }).join("");
+  }
+
+  function renderLocalChips(){
+    const chipWrap = document.getElementById("local-selected-chips");
+    const countEl = document.getElementById("locais-count-selected");
+    if (!chipWrap || !countEl) return;
+
+    const selected = getSelectedLocaisFromSelect();
+    countEl.innerText = selected.length;
+
+    if (selected.length === 0){
+      chipWrap.innerHTML = `<div class="text-muted small">Nenhum selecionado (equivale a “Todos”).</div>`;
+      return;
+    }
+
+    chipWrap.innerHTML = selected.map(l => `
+      <span class="chip">
+        ${esc(l)}
+        <button type="button" title="Remover" onclick="toggleLocalValue('${esc(l)}', false)">
+          <i class="material-icons" style="font-size:16px;">close</i>
+        </button>
+      </span>
+    `).join("");
+  }
+
+  /* =========================
+     TOTAL DE ITENS (SOMA QTD)
+     ========================= */
+  function calcularTotalItens(dados){
+    let total = 0;
+    (dados || []).forEach(r => {
+      const n = Number(String(r[3] ?? "0").replace(",", "."));
+      if (!isNaN(n)) total += n;
+    });
+    return total;
+  }
+
+  function atualizarTotalItens(valor){
+    const el = document.getElementById("f-total-itens");
+    if (el) el.value = String(valor ?? 0);
+  }
+
+  /* =========================
+     INIT
+     ========================= */
+  window.onload = function(){
+    log("Janela carregada (onload). Iniciando sistema...");
+    init();
+  };
+
+  function init(){
+    log("Executando init...");
+
+    // Salva no cache sempre que o usuário mexer na tabela
+    document.getElementById("lista-lancamentos").addEventListener("input", autoSaveDraft);
+    document.getElementById("lista-lancamentos").addEventListener("change", autoSaveDraft);
+
+    // A TRAVA: Só adiciona o evento de teclado se ele ainda não existir na janela
+    if (!window.enterConfigurado) {
+      document.addEventListener("keydown", function(event){
+        if (event.key === "Enter") {
+          const target = event.target;
+          
+          // --- Regras da Tela Principal ---
+          if (target.classList.contains("input-data") || 
+              target.classList.contains("input-local") || 
+              target.classList.contains("input-tipo") || 
+              target.classList.contains("input-qtd")) {
+              
+            const row = target.closest("tr");
+            setTimeout(() => {
+              if (target.classList.contains("input-data")) {
+                row.querySelector(".input-local").focus();
+              } else if (target.classList.contains("input-local")) {
+                row.querySelector(".input-tipo").focus();
+              } else if (target.classList.contains("input-tipo")) {
+                const inputQtd = row.querySelector(".input-qtd");
+                inputQtd.focus();
+                inputQtd.select();
+              } else if (target.classList.contains("input-qtd")) {
+                adicionarLinha();
+              }
+            }, 10);
+          }
+          
+          // --- Regras do Modal Lote Manual ---
+          else if (target.id === "lote-manual-local") {
+            // Se der Enter no select do Local, pula pro 1º input de quantidade
+            event.preventDefault();
+            const firstQtd = document.querySelector(".manual-qtd-item");
+            if (firstQtd) firstQtd.focus();
+          }
+          else if (target.classList.contains("manual-qtd-item")) {
+            // Se der Enter numa quantidade, pula pra quantidade de baixo
+            event.preventDefault();
+            const allQtds = Array.from(document.querySelectorAll(".manual-qtd-item"));
+            const currentIndex = allQtds.indexOf(target);
+            
+            if (currentIndex > -1 && currentIndex < allQtds.length - 1) {
+              allQtds[currentIndex + 1].focus(); // Pula pro próximo
+            } else {
+              confirmarLoteManual(); // Se for o último da lista, salva!
+            }
+          }
+        }
+      });
+      window.enterConfigurado = true;
+    }
+
+    // eventos do filtro de locais (checklist)
+    const localFilter = document.getElementById("f-local-filter");
+    if (localFilter && !localFilter.dataset.bound){
+      localFilter.dataset.bound = "1";
+      localFilter.addEventListener("input", function(){
+        renderLocalChecklist();
+      });
+    }
+
+    // FIX DE SCROLL PARA O LOTE MANUAL (Evita que o input fique atrás do rodapé fixo)
+    const containerLoteManual = document.querySelector("#modalLoteManual .table-responsive");
+    if (containerLoteManual) {
+      // O 'focusin' escuta qualquer elemento que ganhe foco dentro da tabela
+      containerLoteManual.addEventListener("focusin", function(event) {
+        if (event.target.tagName === "INPUT") {
+          // O setTimeout anula a rolagem quebrada do navegador e aplica a nossa
+          setTimeout(() => {
+            event.target.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 30);
+        }
+      });
+    }
+
+    log("Chamando google.script.run.obterDadosIniciaisPainel...");
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        log("Resposta do Servidor recebida.");
+
+        if (res.erro){
+          log("ERRO DO BACKEND: " + res.erro);
+          document.getElementById("loader-msg").innerText = "Erro fatal encontrado.";
+          document.getElementById("fatal-error-container").innerHTML = `
+            <div class="alert alert-danger shadow-sm">
+              <h4 class="alert-heading"><i class="material-icons align-middle">error</i> Erro no Servidor</h4>
+              <p>${esc(res.erro)}</p>
+              <hr>
+              <p class="mb-0 small">Verifique se o <strong>IDPLANILHA</strong> no arquivo em <strong>Code.gs</strong> está correto.</p>
+            </div>
+          `;
+          return;
+        }
+
+        log("Dados carregados com sucesso. Locais: " + (res.locais ? res.locais.length : 0));
+        DB = res;
+
+        // 1. Preenche o select invisível e os componentes visuais de locais
+        if (DB.locais) {
+          const optsLocais = DB.locais.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+          const fLocalEl = document.getElementById("f-local");
+          if(fLocalEl) fLocalEl.innerHTML = `<option value="todos" selected>Todos</option>` + optsLocais;
+        }
+
+        // 2. Força uma pequena espera para garantir que o DOM está estável
+        setTimeout(function() {
+          renderLocalChecklist();
+          renderLocalChips();
+          renderListasCadastro(); // Preenche a aba de Cadastros Base e cria os Datalists
+          buscarSugestaoEtiqueta();
+          
+          // 3. Inicializa o Analytics com datas padrão se estiverem vazias
+          const hoje = new Date().toISOString().split('T')[0];
+          if(!document.getElementById("g-fim").value) document.getElementById("g-fim").value = hoje;
+          
+          log("Interface renderizada totalmente.");
+          
+          // 4. Tenta restaurar. Se não tiver rascunho, cria uma linha limpa.
+          const temRascunho = restoreDraft();
+          if (!temRascunho) {
+            adicionarLinha(); 
+          }
+          
+        }, 150);
+
+        // 5. Remove o Loader
+        const loader = document.getElementById("loader");
+        loader.style.opacity = 0;
+        setTimeout(() => loader.style.display = "none", 500);
+
+        showToast("Sistema pronto para uso.", "success");
+      })
+      .withFailureHandler(function(err){
+        log("FALHA CRÍTICA DE CONEXÃO: " + err.message);
+        document.getElementById("loader-msg").innerText = "Falha de Conexão.";
+        document.getElementById("fatal-error-container").innerHTML = `
+          <div class="alert alert-danger shadow-sm">
+            <h4 class="alert-heading"><i class="material-icons align-middle">wifi_off</i> Falha de Conexão</h4>
+            <p>${esc(err.message)}</p>
+          </div>
+        `;
+      })
+      .obterDadosIniciaisPainel();
+  }
+
+  /* =========================
+     INTEGRAÇÃO: CONTROLES
+     ========================= */
+  function abrirModalControles(){
+    document.getElementById("box-table-controles").style.display = "none";
+    document.getElementById("lista-preview-controles").innerHTML = "";
+    document.getElementById("btn-import-controles").disabled = true;
+    
+    // Configura o mês atual como pré-selecionado
+    const mesAtual = new Date().getMonth() + 1;
+    document.getElementById("controles-mes").value = mesAtual;
+    
+    new bootstrap.Modal(document.getElementById("modalControles")).show();
+  }
+
+  let logInterval = null; // Variável para controlar o relógio de atualização do terminal
+
+  function acionarBuscaControles() {
+    const mesSelecionado = document.getElementById("controles-mes").value;
+    const taskId = "TASK_" + new Date().getTime(); // ID único para a execução atual
+    
+    document.getElementById("box-table-controles").style.display = "none";
+    document.getElementById("loader-controles").style.display = "block";
+    document.getElementById("btn-import-controles").disabled = true;
+    
+    const logBox = document.getElementById("live-log-box");
+    logBox.innerHTML = "Conectando ao servidor... aguarde.<br>";
+
+    // Dispara o 'Relógio' que puxa o log do backend a cada 2 segundos
+    logInterval = setInterval(() => {
+       google.script.run.withSuccessHandler(html => {
+          if(html) {
+             logBox.innerHTML = html;
+             logBox.scrollTop = logBox.scrollHeight; // Faz rolagem automática pro final
+          }
+       }).lerLogsControle(taskId);
+    }, 2000);
+
+    // Dispara a varredura pesada (passando o taskId para ele saber onde salvar os logs)
+    google.script.run
+      .withSuccessHandler(function(res){
+         clearInterval(logInterval); // Desliga a busca de logs
+         document.getElementById("loader-controles").style.display = "none";
+         
+         if (res.erro) return showToast(res.erro, "error");
+         if (!res.dados || res.dados.length === 0) return showToast("Nenhuma Nota de Sala (1409) encontrada neste mês.", "info");
+
+         const tbody = document.getElementById("lista-preview-controles");
+         tbody.innerHTML = res.dados.map(item => `
+            <tr>
+               <td class="text-center"><input type="checkbox" class="form-check-input chk-import-control" checked></td>
+               <td class="fw-bold text-secondary ctrl-data">${esc(item.data)}</td>
+               <td class="text-primary ctrl-local">${esc(item.local)}</td>
+               <td class="ctrl-qtd fw-bold">${esc(item.qtd)}</td>
+            </tr>
+         `).join("");
+         
+         document.getElementById("box-table-controles").style.display = "block";
+         document.getElementById("btn-import-controles").disabled = false;
+         showToast("Busca concluída! " + res.dados.length + " agrupamentos.", "success");
+      })
+      .withFailureHandler(function(err){
+         clearInterval(logInterval); // Desliga a busca de logs em caso de erro fatal
+         document.getElementById("loader-controles").style.display = "none";
+         showToast("Falha de conexão: " + err.message, "error");
+      })
+      .buscarDadosControles(mesSelecionado, taskId); 
+  }
+
+  function toggleControlesCheckbox(mainCheck) {
+     const checks = document.querySelectorAll(".chk-import-control");
+     checks.forEach(c => c.checked = mainCheck.checked);
+  }
+
+  function confirmarImportacaoControles() {
+     const rows = document.querySelectorAll("#lista-preview-controles tr");
+     let count = 0;
+     
+     // Remove a linha vazia principal se for a única existente para não poluir
+     const mainList = document.getElementById("lista-lancamentos");
+     if(mainList.rows.length === 1 && !mainList.rows[0].querySelector(".input-local").value) mainList.rows[0].remove();
+
+     rows.forEach(row => {
+        if(row.querySelector(".chk-import-control").checked){
+           const data = row.querySelector(".ctrl-data").innerText;
+           const local = row.querySelector(".ctrl-local").innerText;
+           const qtd = row.querySelector(".ctrl-qtd").innerText;
+           
+           adicionarLinha(); // Usa a sua função existente para criar a linha visualmente
+           const lastRow = mainList.lastElementChild;
+           
+           // Converte data de DD/MM/YYYY para YYYY-MM-DD para o input type="date"
+           const partes = data.split("/");
+           if(partes.length === 3) lastRow.querySelector(".input-data").value = `${partes[2]}-${partes[1]}-${partes[0]}`;
+           
+           lastRow.querySelector(".input-local").value = local;
+           lastRow.querySelector(".input-tipo").value = "NOTA DE SALA";
+           lastRow.querySelector(".input-qtd").value = qtd;
+           count++;
+        }
+     });
+
+     bootstrap.Modal.getInstance(document.getElementById("modalControles")).hide();
+     atualizarContador();
+     if(count > 0) showToast(count + " controles adicionados à lista principal!", "success");
+  }
+
+  /* =========================
+     TOAST
+     ========================= */
+  function showToast(msg, type="info"){
+    log("TOAST: " + msg);
+
+    const container = document.getElementById("toast-container");
+    const toast = document.createElement("div");
+    toast.className = "toast-msg toast-" + type;
+
+    let icon = "info";
+    if (type === "success") icon = "check_circle";
+    if (type === "error") icon = "error_outline";
+
+    toast.innerHTML = `<i class="material-icons fs-4">${icon}</i><span>${esc(msg)}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = "fadeOut 0.5s ease-out forwards";
+      setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+      }, 500);
+    }, 3500);
+  }
+
+  /* =========================
+     OCR
+     ========================= */
+  function processarArquivosSelecionados(input){
+    if (input.files.length === 0) return;
+
+    document.getElementById("loader").style.display = "flex";
+    document.getElementById("loader").style.opacity = 1;
+    document.getElementById("loader-msg").innerText = "Lendo arquivo local...";
+    document.getElementById("fatal-error-container").innerHTML = "";
+
+    log("------------------------------------------------");
+    log("Iniciando leitura de " + input.files.length + " arquivos...");
+
+    const arquivos = [];
+    let processados = 0;
+    const totalArquivos = input.files.length;
+
+    Array.from(input.files).forEach(file => {
+      log("Lendo: " + file.name + " (" + (file.size/1024).toFixed(1) + " kb)");
+
+      const reader = new FileReader();
+
+      reader.onload = function(e){
+        log("Leitura concluída (Browser): " + file.name);
+        try{
+          const rawData = e.target.result;
+          const base64Data = rawData.split(",")[1];
+          if (!base64Data) throw new Error("Falha ao converter Base64.");
+
+          arquivos.push({ name: file.name, mimeType: file.type, data: base64Data });
+          processados++;
+
+          if (processados === totalArquivos){
+            log("Todos arquivos lidos. Enviando para o Google...");
+            input.value = "";
+            enviarParaServer(arquivos);
+          }
+        } catch (err){
+          log("ERRO JS: " + err.message);
+          alert("Erro interno no navegador: " + err.message);
+          document.getElementById("loader").style.display = "none";
+        }
+      };
+
+      reader.onerror = function(e){
+        log("ERRO DE LEITURA: " + (e.target.error ? e.target.error.message : "desconhecido"));
+        document.getElementById("loader").style.display = "none";
+        alert("O navegador não conseguiu ler o arquivo. Tente outro navegador.");
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function enviarParaServer(arquivos){
+    log("Enviando dados Base64 para o servidor...");
+    google.script.run
+      .withSuccessHandler(function(res){
+        log("Retorno do OCR recebido.");
+        document.getElementById("loader").style.display = "none";
+
+        if (res.success){
+          log("OCR Sucesso. Itens identificados: " + res.dados.length);
+          abrirModalOCR(res.dados);
+        } else {
+          log("Erro no processamento OCR: " + res.erro);
+          showToast("Erro no OCR: " + res.erro, "error");
+        }
+      })
+      .withFailureHandler(function(err){
+        log("Falha na chamada OCR: " + err.message);
+        document.getElementById("loader").style.display = "none";
+        showToast("Falha de conexão: " + err.message, "error");
+      })
+      .processarUploadOCR(arquivos);
+  }
+
+  function abrirModalOCR(dados){
+    const tbody = document.getElementById("lista-preview-ocr");
+    tbody.innerHTML = "";
+
+    if (dados.length === 0){
+      showToast("O sistema não conseguiu ler nenhum dado legível nos arquivos.", "error");
+      return;
+    }
+
+    const selLocal = document.getElementById("ocr-local-padrao");
+    selLocal.innerHTML = `<option value="">-- Selecione para preencher todos --</option>` +
+      (DB.locais || []).map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+
+    document.getElementById("ocr-status-count").innerText = dados.length + " registros detectados";
+
+    dados.forEach((item) => {
+      const matchClass = item.match ? "text-success fw-bold" : "text-dark";
+      const icon = item.match ? "check_circle" : "help_outline";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="text-center"><input type="checkbox" class="form-check-input chk-importar" checked></td>
+        <td>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white border-0 ${matchClass}">
+              <i class="material-icons fs-6">${icon}</i>
+            </span>
+            <input type="text" class="form-control form-control-sm ocr-tipo-val" value="${esc(item.tipo)}" list="datalist-tipos">
+          </div>
+        </td>
+        <td><input type="number" class="form-control form-control-sm ocr-qtd-val" value="${esc(item.qtd)}"></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    if (!document.getElementById("datalist-tipos")){
+      const dl = document.createElement("datalist");
+      dl.id = "datalist-tipos";
+      dl.innerHTML = (DB.tipos || []).map(t => `<option value="${esc(t)}"></option>`).join("");
+      document.body.appendChild(dl);
+    }
+
+    const modalEl = document.getElementById("modalOCR");
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
+
+  function confirmarImportacaoOCR(){
+    const tbody = document.getElementById("lista-preview-ocr");
+    const rows = tbody.querySelectorAll("tr");
+    const localPadrao = document.getElementById("ocr-local-padrao").value;
+
+    let importados = 0;
+    const listaPrincipal = document.getElementById("lista-lancamentos");
+
+    if (listaPrincipal.rows.length === 1){
+      if (!listaPrincipal.rows[0].querySelector(".input-local").value){
+        listaPrincipal.rows[0].remove();
+      }
+    }
+
+    rows.forEach(row => {
+      const chk = row.querySelector(".chk-importar");
+      if (chk && chk.checked){
+        const tipo = row.querySelector(".ocr-tipo-val").value;
+        const qtd = row.querySelector(".ocr-qtd-val").value;
+        adicionarLinhaComDados(localPadrao, tipo, qtd);
+        importados++;
+      }
+    });
+
+    const modalEl = document.getElementById("modalOCR");
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+
+    showToast(importados + " itens importados.", "success");
+    atualizarContador();
+    autoSaveDraft(); // <-- ADICIONE ISTO AQUI
+  }
+
+  function adicionarLinhaComDados(local, tipo, qtd){
+    adicionarLinha();
+    const tbody = document.getElementById("lista-lancamentos");
+    const lastRow = tbody.lastElementChild;
+
+    if (local) lastRow.querySelector(".input-local").value = local;
+    if (tipo) lastRow.querySelector(".input-tipo").value = tipo;
+    if (qtd) lastRow.querySelector(".input-qtd").value = qtd;
+  }
+
+  /* =========================
+     LOTE MANUAL
+     ========================= */
+  const LISTAPADRAO33 = [
+    "ADMINISTRAÇÃO DA PRESCRIÇÃO MÉDICA",
+    "BOLETIM DE IDENTIFICAÇÃO",
+    "BOMBA DE INFUSÃO OCITOCINA",
+    "CHECK LIST",
+    "CONTRA-CHEQUE PRESCRIÇÃO",
+    "CONTROLE DE DIÁLISE",
+    "CONTROLE NEUROLÓGICO",
+    "DECLARAÇÃO DE NASCIDO VIVO",
+    "DECLARAÇÃO DE ÓBITO",
+    "DECLARAÇÃO INVOLUNTÁRIA",
+    "DECLARAÇÃO VOLUNTÁRIA",
+    "DIU",
+    "FICHA DE ANESTESIA",
+    "FICHA DE ATENDIMENTO PRÉ HOSPITALAR SAMU",
+    "IDENTIFICAÇÃO DE RECÉM NASCIDO",
+    "MOVIMENTAÇÕES DA PRESCRIÇÃO MÉDICA",
+    "MOVIMENTAÇÕES DA PRESCRIÇÃO DE ENFERMAGEM",
+    "NOTA DE SALA",
+    "OPME ÓRTESE E PRÓTESES",
+    "PRESCRIÇÃO ENFERMAGEM",
+    "PRESCRIÇÃO HEMODIÁLISE",
+    "PRESCRIÇÃO HEMOTERAPIA",
+    "PRESCRIÇÃO MÉDICA",
+    "PRESCRIÇÃO QUIMIOTERAPIA",
+    "RASTREABILIDADE",
+    "RECUPERAÇÃO PÓS-ANESTÉSICA",
+    "REGISTRO DE ENFERMAGEM",
+    "TERMO DE DESISTÊNCIA DE TRATAMENTO A PEDIDO E CONTRA INDICAÇÃO MÉDICA",
+    "TERMO DE CONSENTIMENTO",
+    "TERMO DE DECLARAÇÃO DE MORTE ENCEFÁLICA",
+    "TERMO DE DOAÇÃO DE ÓRGÃOS",
+    "TERMO DE INTERNAÇÃO",
+    "TERMO DE TRANSFERÊNCIA"
+  ];
+
+  function abrirModalLoteManual(){
+    const selLocal = document.getElementById("lote-manual-local");
+    if (DB.locais && DB.locais.length > 0){
+      selLocal.innerHTML = `<option value="">-- Selecione o Local --</option>` +
+        DB.locais.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+    }
+
+    const tbody = document.getElementById("lista-lote-manual");
+    tbody.innerHTML = "";
+
+    LISTAPADRAO33.forEach((item, index) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="padding-left: 15px;">
+          <span class="fw-bold text-secondary" style="font-size: 0.9em;">${index + 1}.</span>
+          ${esc(item)}
+          <input type="hidden" class="manual-nome-item" value="${esc(item)}">
+        </td>
+        <td><input type="number" class="form-control form-control-sm manual-qtd-item" min="0" placeholder="0"></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const modalEl = document.getElementById("modalLoteManual");
+    new bootstrap.Modal(modalEl).show();
+  }
+
+  // Função auxiliar que apenas extrai os dados, joga na lista e limpa as quantidades
+  function processarItensLote() {
+    const localSelecionado = document.getElementById("lote-manual-local").value;
+    if (!localSelecionado){
+      alert("Por favor, selecione um Local / Unidade no topo da janela.");
+      return false;
+    }
+
+    const rows = document.querySelectorAll("#lista-lote-manual tr");
+    let importados = 0;
+
+    const listaPrincipal = document.getElementById("lista-lancamentos");
+    if (listaPrincipal.rows.length === 1){
+      const primeiraLinha = listaPrincipal.rows[0];
+      if (primeiraLinha && !primeiraLinha.querySelector(".input-local").value){
+        primeiraLinha.remove();
+      }
+    }
+
+    rows.forEach(row => {
+      const nomeItem = row.querySelector(".manual-nome-item").value;
+      const inputQtd = row.querySelector(".manual-qtd-item");
+      const qtd = parseInt(inputQtd.value, 10);
+
+      if (qtd > 0){
+        adicionarLinhaComDados(localSelecionado, nomeItem, qtd);
+        importados++;
+        inputQtd.value = ""; // Limpa a caixinha logo após extrair
+      }
+    });
+
+    if (importados === 0){
+      alert("Nenhuma quantidade foi preenchida.");
+      return false;
+    }
+
+    showToast(importados + " itens adicionados à lista de envio.", "success");
+    atualizarContador();
+    autoSaveDraft();
+    return true; // Retorna sucesso
+  }
+
+  // Ação do botão "Inserir Itens Preenchidos" (Salva e Fecha)
+  function confirmarLoteManual(){
+    if (processarItensLote()) {
+      const modalEl = document.getElementById("modalLoteManual");
+      bootstrap.Modal.getInstance(modalEl).hide();
+    }
+  }
+
+  // Ação do botão "Novo Local" (Salva, limpa o topo e mantém aberto)
+  function confirmarLoteENovoLocal() {
+    if (processarItensLote()) {
+      const selectLocal = document.getElementById("lote-manual-local");
+      selectLocal.value = ""; // Reseta o seletor de local
+      selectLocal.focus();    // Coloca o cursor piscando direto nele
+      
+      // Joga o scroll da janela de volta pro topo
+      document.querySelector("#modalLoteManual .modal-body").scrollTop = 0; 
+    }
+  }
+
+  /* =========================
+     INSERÇÃO (Aba 1)
+     ========================= */
+  function adicionarLinha(){
+    const tbody = document.getElementById("lista-lancamentos");
+    const row = document.createElement("tr");
+    row.className = "input-row";
+
+    // Pega os valores da última linha para replicar
+    const inputsData = document.querySelectorAll(".input-data");
+    const inputsLocal = document.querySelectorAll(".input-local");
+    let dataPadrao = "";
+    let localPadrao = "";
+
+    if (inputsData.length > 0) {
+      dataPadrao = inputsData[inputsData.length - 1].value;
+      localPadrao = inputsLocal[inputsLocal.length - 1].value; 
+    } else {
+      const hoje = new Date();
+      const offset = hoje.getTimezoneOffset() * 60000;
+      dataPadrao = new Date(hoje.getTime() - offset).toISOString().split("T")[0];
+    }
+
+    // Removido o list="datalist-tipos" do input-tipo
+    row.innerHTML = `
+      <td><input type="date" class="form-control form-control-sm input-data" value="${esc(dataPadrao)}"></td>
+      <td>
+        <input type="text" class="form-control form-control-sm input-local" list="datalist-locais" placeholder="Local..." value="${esc(localPadrao)}">
+      </td>
+      <td>
+        <input type="text" class="form-control form-control-sm input-tipo" placeholder="Digite o Tipo..." autocomplete="off">
+      </td>
+      <td><input type="number" class="form-control form-control-sm input-qtd" value="1" min="1"></td>
+      <td class="text-center">
+        <i class="material-icons remove-btn" onclick="removerLinha(this)" title="Remover linha">delete</i>
+      </td>
+    `;
+
+    tbody.appendChild(row);
+
+    // LIGA O MOTOR NOVO AQUI:
+    const inputTipo = row.querySelector(".input-tipo");
+    setupCustomAutocomplete(inputTipo);
+
+    // UX Inteligente no foco
+    setTimeout(() => {
+      if (localPadrao) {
+        inputTipo.focus();
+      } else {
+        row.querySelector(".input-local").focus();
+      }
+    }, 50);
+
+    row.scrollIntoView({ behavior: "smooth", block: "end" });
+    atualizarContador();
+  }
+
+  function removerLinha(btn){
+    const row = btn.closest("tr");
+    const tbody = document.getElementById("lista-lancamentos");
+
+    if (tbody.rows.length > 1){
+      row.remove();
+      atualizarContador();
+      autoSaveDraft();
+    } else {
+      // Limpa os inputs de texto em vez de selects
+      row.querySelectorAll(".input-local, .input-tipo").forEach(s => s.value = "");
+      row.querySelector(".input-qtd").value = 1;
+      showToast("A tabela foi limpa.", "info");
+    }
+  }
+
+  function removerLinha(btn){
+    const row = btn.closest("tr");
+    const tbody = document.getElementById("lista-lancamentos");
+
+    if (tbody.rows.length > 1){
+      row.remove();
+      atualizarContador();
+      autoSaveDraft(); // <-- ADICIONE ISTO AQUI
+    } else {
+      row.querySelectorAll("select").forEach(s => s.value = "");
+      row.querySelector(".input-qtd").value = 1;
+      showToast("A tabela foi limpa.", "info");
+    }
+  }
+
+  function atualizarContador(){
+    const qtd = document.querySelectorAll(".input-row").length;
+    const texto = (qtd === 1) ? "1 linha pronta" : (qtd + " linhas prontas");
+    document.getElementById("contador-linhas").innerText = texto + " para envio";
+  }
+
+  function salvarTudo(){
+    const rows = document.querySelectorAll(".input-row");
+    const listaParaSalvar = [];
+    let erroValidacao = false;
+
+    rows.forEach(row => {
+      const data = row.querySelector(".input-data").value;
+      const local = row.querySelector(".input-local").value;
+      const tipo = row.querySelector(".input-tipo").value;
+      const qtd = row.querySelector(".input-qtd").value;
+
+      if (!data || !local || !tipo || !qtd){
+        erroValidacao = true;
+        row.style.backgroundColor = "#ffe6e6";
+      } else {
+        row.style.backgroundColor = "";
+        listaParaSalvar.push({ data: data, local: local, tipo: tipo, qtd: qtd });
+      }
+    });
+
+    if (erroValidacao) return showToast("Preencha todos os campos destacados.", "error");
+    if (listaParaSalvar.length === 0) return showToast("Adicione pelo menos uma linha.", "info");
+
+    const dadosEnvio = [...listaParaSalvar];
+    const qtdEnvio = dadosEnvio.length;
+
+    showToast("Enviando " + qtdEnvio + " registros...", "info");
+    log("Enviando lote de " + qtdEnvio + " itens para salvamento...");
+    
+    // Bloqueia a tela com o Loader para evitar duplo clique enquanto salva
+    document.getElementById("loader").style.display = "flex";
+    document.getElementById("loader").style.opacity = 1;
+    document.getElementById("loader-msg").innerText = "Salvando ocorrências no banco de dados...";
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        document.getElementById("loader").style.display = "none";
+        
+        if (res.success){
+          log("Lote salvo com sucesso.");
+          
+          // 1. Limpa a tela SÓ DEPOIS que o servidor confirmar o salvamento
+          document.getElementById("lista-lancamentos").innerHTML = "";
+          adicionarLinha();
+          atualizarContador();
+          
+          // 2. CORREÇÃO CRÍTICA: Limpa o Rascunho no bloco de sucesso
+          localStorage.removeItem("samis_draft_2026"); 
+          
+          showToast("Sucesso! " + res.qtd + " registros salvos.", "success");
+        } else {
+          log("Erro ao salvar lote: " + res.erro);
+          showToast("Erro ao salvar: " + res.erro, "error");
+        }
+      })
+      .withFailureHandler(function(err){
+        document.getElementById("loader").style.display = "none";
+        log("Falha de conexão ao salvar: " + err.message);
+        showToast("Erro de Conexão: " + err.message, "error");
+      })
+      .salvarLoteOcorrencias(dadosEnvio);
+  }
+
+  /* =========================
+     NAVEGAÇÃO
+     ========================= */
+  function nav(tabId, el){
+    document.querySelectorAll(".tab-pane").forEach(t => t.style.display = "none");
+    document.querySelectorAll(".nav-link").forEach(n => n.classList.remove("active"));
+    document.getElementById(tabId).style.display = "block";
+    el.classList.add("active");
+  }
+
+  function toggleLoader(show){
+    const loader = document.getElementById("loader");
+    loader.style.display = show ? "flex" : "none";
+  }
+
+  /* =========================
+     CADASTROS
+     ========================= */
+  function renderListasCadastro(){
+    const listaL = document.getElementById("lista-locais");
+    const listaT = document.getElementById("lista-tipos");
+    
+    if (!listaL || !listaT) return; 
+
+    // 1. Atualiza as listas da aba de Cadastros
+    if (DB && DB.locais && DB.locais.length > 0){
+        listaL.innerHTML = DB.locais.map(x => 
+            `<li class="list-group-item py-2"><i class="material-icons align-middle fs-6 text-muted me-2">place</i>${esc(x)}</li>`
+        ).join("");
+        document.getElementById("count-locais").innerText = DB.locais.length;
+    }
+
+    if (DB && DB.tipos && DB.tipos.length > 0){
+        listaT.innerHTML = DB.tipos.map(x => 
+            `<li class="list-group-item py-2"><i class="material-icons align-middle fs-6 text-muted me-2">description</i>${esc(x)}</li>`
+        ).join("");
+        document.getElementById("count-tipos").innerText = DB.tipos.length;
+    }
+
+    // 2. Cria os "Datalists" globais para o Autocompletar da Tabela
+    let dlLocais = document.getElementById("datalist-locais");
+    if (!dlLocais) {
+      dlLocais = document.createElement("datalist");
+      dlLocais.id = "datalist-locais";
+      document.body.appendChild(dlLocais);
+    }
+    if (DB && DB.locais) {
+      dlLocais.innerHTML = DB.locais.map(x => `<option value="${esc(x)}"></option>`).join("");
+    }
+
+    let dlTipos = document.getElementById("datalist-tipos");
+    if (!dlTipos) {
+      dlTipos = document.createElement("datalist");
+      dlTipos.id = "datalist-tipos";
+      document.body.appendChild(dlTipos);
+    }
+    if (DB && DB.tipos) {
+      dlTipos.innerHTML = DB.tipos.map(x => `<option value="${esc(x)}"></option>`).join("");
+    }
+  }
+
+  function cadastrar(cat){
+    const el = document.getElementById(cat === "local" ? "add-local" : "add-tipo");
+    const valor = el.value;
+
+    if (!valor || !valor.trim()){
+      return showToast("Digite um nome.", "info");
+    }
+
+    showToast("Cadastrando...", "info");
+
+    google.script.run
+      .withSuccessHandler(function(){
+        showToast("Item cadastrado!", "success");
+        el.value = "";
+        init();
+      })
+      .withFailureHandler(function(err){
+        showToast("Erro: " + err.message, "error");
+      })
+      .cadastrarItemUtil(cat, valor);
+  }
+
+  /* =========================
+     VISÃO GLOBAL (BUSCA E ORDENAÇÃO)
+     ========================= */
+  let currentVisaoData = []; // Guarda os dados em cache para ordenar
+  let sortOrderVisao = { col: -1, asc: true }; // Guarda a direção da ordenação
+
+  function buscarRegistros(){
+    showToast("Pesquisando...", "info");
+
+    const selectLocal = document.getElementById("f-local");
+    const locaisSelecionados = Array.from(selectLocal.selectedOptions).map(option => option.value);
+
+    const filtroLocal = (locaisSelecionados.length === 0 || locaisSelecionados.includes("todos"))
+      ? "todos"
+      : locaisSelecionados;
+
+    setPainelLocaisCollapsed(true, { silent: true });
+
+    const filtros = {
+      dataInicio: document.getElementById("f-inicio").value,
+      dataFim: document.getElementById("f-fim").value,
+      local: filtroLocal,
+      tipo: document.getElementById("f-tipo-txt").value,
+      tipoExato: document.getElementById("f-tipo-exato").checked, // <-- NOVA LINHA AQUI
+      limite: document.getElementById("f-limite").value
+    };
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        const tbody = document.getElementById("tb-visao");
+        const footer = document.getElementById("resumo-busca");
+
+        if (res.erro) return showToast(res.erro, "error");
+
+        if (!res.dados || res.dados.length === 0){
+          currentVisaoData = [];
+          tbody.innerHTML = `<tr><td colspan="4" class="text-center p-5 text-muted">Nenhum registro encontrado.</td></tr>`;
+          footer.innerText = "0 resultados.";
+          atualizarTotalItens(0);
+          showToast("Sem resultados.", "info");
+          return;
+        }
+
+        // Salva os dados globalmente para podermos ordenar sem ir ao servidor
+        currentVisaoData = res.dados;
+        
+        // Reseta os ícones de ordenação
+        for(let i=0; i<=3; i++) {
+           const icon = document.getElementById('sort-icon-'+i);
+           if(icon) { icon.innerText = 'swap_vert'; icon.classList.replace('text-primary', 'text-muted'); }
+        }
+        sortOrderVisao = { col: -1, asc: true };
+
+        // Desenha a tabela
+        renderTabelaVisao();
+
+        footer.innerText = "Mostrando " + res.dados.length + " resultados.";
+        atualizarTotalItens(calcularTotalItens(res.dados));
+        showToast("Pesquisa concluída.", "success");
+      })
+      .withFailureHandler(function(err){
+        showToast("Erro na busca: " + err.message, "error");
+      })
+      .pesquisarRegistros(filtros);
+  }
+
+  function ordenarTabelaVisao(colIndex) {
+    if (currentVisaoData.length === 0) return;
+
+    // Alterna entre Crescente e Decrescente
+    if (sortOrderVisao.col === colIndex) {
+      sortOrderVisao.asc = !sortOrderVisao.asc;
+    } else {
+      sortOrderVisao.col = colIndex;
+      sortOrderVisao.asc = true;
+    }
+
+    // Atualiza o visual dos ícones
+    for(let i=0; i<=3; i++) {
+       const icon = document.getElementById('sort-icon-'+i);
+       if(icon) {
+         icon.innerText = 'swap_vert';
+         icon.classList.replace('text-primary', 'text-muted');
+       }
+    }
+    const activeIcon = document.getElementById('sort-icon-'+colIndex);
+    activeIcon.innerText = sortOrderVisao.asc ? 'arrow_upward' : 'arrow_downward';
+    activeIcon.classList.replace('text-muted', 'text-primary');
+
+    // Lógica de ordenação super rápida
+    currentVisaoData.sort((a, b) => {
+      let valA = a[colIndex];
+      let valB = b[colIndex];
+
+      // Se for Data (coluna 0), converte DD/MM/YYYY para comparar
+      if (colIndex === 0) {
+        const parseDate = (d) => {
+          if(!d) return 0;
+          let p = String(d).split('/');
+          if(p.length === 3) return new Date(p[2], p[1]-1, p[0]).getTime();
+          return 0;
+        };
+        valA = parseDate(valA);
+        valB = parseDate(valB);
+      }
+      // Se for Quantidade (coluna 3), converte para número
+      else if (colIndex === 3) {
+        valA = parseInt(valA) || 0;
+        valB = parseInt(valB) || 0;
+      }
+      // Se for Texto (Local ou Tipo)
+      else {
+        valA = String(valA).toLowerCase();
+        valB = String(valB).toLowerCase();
+      }
+
+      if (valA < valB) return sortOrderVisao.asc ? -1 : 1;
+      if (valA > valB) return sortOrderVisao.asc ? 1 : -1;
+      return 0;
+    });
+
+    renderTabelaVisao();
+  }
+
+  function renderTabelaVisao() {
+    const tbody = document.getElementById("tb-visao");
+    tbody.innerHTML = currentVisaoData.map(r => `
+      <tr>
+        <td class="fw-bold text-secondary col-data">${esc(r[0])}</td>
+        <td class="col-local">${esc(r[1])}</td>
+        <td class="col-tipo">${esc(r[2])}</td>
+        <td class="col-qtd"><span class="badge bg-light text-dark border">${esc(r[3])}</span></td>
+      </tr>
+    `).join("");
+  }
+
+  /* =========================
+     GRÁFICOS
+     ========================= */
+  function gerarGrafico(){
+    showToast("Gerando gráfico...", "info");
+
+    const config = {
+      eixo: document.getElementById("g-eixo").value,
+      tipo: document.getElementById("g-tipo-chart").value,
+      dataInicio: document.getElementById("g-inicio").value,
+      dataFim: document.getElementById("g-fim").value
+    };
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        if (res.erro) return showToast(res.erro, "error");
+
+        const ctx = document.getElementById("chartCanvas").getContext("2d");
+        if (myChart) myChart.destroy();
+
+        const colors = ["#004a8d", "#febd11", "#28a745", "#dc3545", "#6f42c1", "#fd7e14", "#20c997", "#17a2b8"];
+        const bgColors = (config.tipo === "pie") ? colors : "rgba(0, 74, 141, 0.8)";
+
+        myChart = new Chart(ctx, {
+          type: config.tipo,
+          data: {
+            labels: res.labels,
+            datasets: [{
+              label: "Total",
+              data: res.data,
+              backgroundColor: bgColors,
+              borderColor: "#003366",
+              borderWidth: 1,
+              tension: 0.3,
+              fill: (config.tipo === "line")
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: (config.tipo === "pie"), position: "right" },
+              title: { display: true, text: "Análise de Dados SAMIS" }
+            }
+          }
+        });
+
+        showToast("Gráfico atualizado.", "success");
+      })
+      .withFailureHandler(function(err){
+        showToast("Erro ao gerar gráfico: " + err.message, "error");
+      })
+      .gerarDadosGraficoDinamico(config);
+  }
+
+  /* =========================
+     SISTEMA DE AUTOSAVE (RASCUNHO)
+     ========================= */
+  function autoSaveDraft() {
+    const rows = document.querySelectorAll(".input-row");
+    const draft = [];
+    rows.forEach(r => {
+      draft.push({
+        data: r.querySelector(".input-data").value,
+        local: r.querySelector(".input-local").value,
+        tipo: r.querySelector(".input-tipo").value,
+        qtd: r.querySelector(".input-qtd").value
+      });
+    });
+    localStorage.setItem("samis_draft_2026", JSON.stringify(draft));
+  }
+
+  function restoreDraft() {
+    const draftStr = localStorage.getItem("samis_draft_2026");
+    if (draftStr) {
+      try {
+        const draft = JSON.parse(draftStr);
+        if (draft && draft.length > 0 && (draft.length > 1 || draft[0].local || draft[0].tipo)) {
+          document.getElementById("lista-lancamentos").innerHTML = ""; 
+          
+          draft.forEach(item => {
+            adicionarLinha(); 
+            const lastRow = document.getElementById("lista-lancamentos").lastElementChild;
+            if (item.data) lastRow.querySelector(".input-data").value = item.data;
+            if (item.local) lastRow.querySelector(".input-local").value = item.local;
+            if (item.tipo) lastRow.querySelector(".input-tipo").value = item.tipo;
+            if (item.qtd) lastRow.querySelector(".input-qtd").value = item.qtd;
+          });
+          
+          atualizarContador();
+          showToast("Rascunho não salvo foi recuperado!", "info");
+          return true;
+        }
+      } catch(e) { console.log("Erro ao ler rascunho", e); }
+    }
+    return false;
+  }
+
+/* =========================
+     AUTOCOMPLETE INTELIGENTE (VIPs PRIMEIRO)
+     ========================= */
+  function setupCustomAutocomplete(inputEl) {
+    // Cria a caixa da lista
+    const wrapper = document.createElement('div');
+    wrapper.className = 'autocomplete-wrapper';
+    inputEl.parentNode.insertBefore(wrapper, inputEl);
+    wrapper.appendChild(inputEl);
+
+    const listContainer = document.createElement('ul');
+    listContainer.className = 'autocomplete-list';
+    wrapper.appendChild(listContainer);
+
+    let currentFocus = -1;
+
+    // Quando o usuário digita
+    inputEl.addEventListener('input', function() {
+      const val = this.value.toUpperCase();
+      listContainer.innerHTML = '';
+      currentFocus = -1;
+
+      if (!val) {
+        listContainer.style.display = 'none';
+        return;
+      }
+
+      let matchesVIP = [];
+      let matchesNormal = [];
+
+      // A LISTA INTELIGENTE: Pega o ranking do Google (se existir), senão usa a sua lista fixa
+      const listaRanking = (DB.rankingVip && DB.rankingVip.length > 0) ? DB.rankingVip : LISTAPADRAO33;
+
+      // 1. Separa quem deu match em VIP e Normal
+      (DB.tipos || []).forEach(tipo => {
+        if (tipo.toUpperCase().includes(val)) {
+          if (listaRanking.includes(tipo)) {
+            matchesVIP.push(tipo);
+          } else {
+            matchesNormal.push(tipo);
+          }
+        }
+      });
+
+      // 2. A MÁGICA DA ORDENAÇÃO:
+      // Ordena os VIPs com base na posição (index) deles dentro da lista de Ranking do Google!
+      matchesVIP.sort((a, b) => {
+        return listaRanking.indexOf(a) - listaRanking.indexOf(b);
+      });
+      // Os normais continuam ordem alfabética para não virar bagunça
+      matchesNormal.sort();
+
+      const allMatches = [...matchesVIP, ...matchesNormal];
+
+      if (allMatches.length === 0) {
+        listContainer.style.display = 'none';
+        return;
+      }
+
+      // Constrói a lista visual
+      allMatches.forEach(item => {
+        const isVip = matchesVIP.includes(item);
+        const li = document.createElement('li');
+        li.className = 'autocomplete-item' + (isVip ? ' vip' : '');
+        
+        const regex = new RegExp(`(${val})`, "gi");
+        let htmlTexto = item.replace(regex, "<span style='text-decoration: underline;'>$1</span>");
+        
+        if (isVip) {
+          li.innerHTML = `<i class="material-icons align-middle" style="font-size:14px; color:#febd11;">star</i> ${htmlTexto}`;
+        } else {
+          li.innerHTML = `<span class="ms-3">${htmlTexto}</span>`;
+        }
+
+        li.addEventListener('mousedown', function(e) {
+          e.preventDefault(); 
+          inputEl.value = item;
+          listContainer.style.display = 'none';
+          
+          const row = inputEl.closest("tr");
+          const inputQtd = row.querySelector(".input-qtd");
+          if (inputQtd) { inputQtd.focus(); inputQtd.select(); }
+        });
+        
+        listContainer.appendChild(li);
+      });
+
+      // O Radar de Colisão (Espaço)
+      const rect = inputEl.getBoundingClientRect();
+      const scrollParent = inputEl.closest('.table-responsive'); 
+      let spaceBelow = 0;
+      if (scrollParent) {
+        spaceBelow = scrollParent.getBoundingClientRect().bottom - rect.bottom;
+      } else {
+        spaceBelow = window.innerHeight - rect.bottom;
+      }
+
+      if (spaceBelow < 240) {
+        listContainer.classList.add('open-up');
+      } else {
+        listContainer.classList.remove('open-up');
+      }
+
+      listContainer.style.display = 'block';
+    });
+
+    // Controle pelo teclado (Setas e Enter) local do Autocomplete
+    inputEl.addEventListener('keydown', function(e) {
+      const items = listContainer.querySelectorAll('li');
+      
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        currentFocus++;
+        addActive(items);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        currentFocus--;
+        addActive(items);
+      } else if (e.key === "Enter") {
+        if (listContainer.style.display === 'block' && items.length > 0) {
+          e.preventDefault();
+          e.stopPropagation(); // Avisa o sistema para NÃO disparar o "Enter global" que criamos antes
+          if (currentFocus > -1) {
+            items[currentFocus].dispatchEvent(new Event('mousedown')); // Simula o clique do mouse
+          } else {
+            items[0].dispatchEvent(new Event('mousedown')); // Se não escolheu com a seta, pega o 1º da lista (geralmente o VIP)
+          }
+        }
+      }
+    });
+
+    inputEl.addEventListener('blur', function() {
+      setTimeout(() => listContainer.style.display = 'none', 150);
+    });
+
+    function addActive(items) {
+      if (!items || items.length === 0) return;
+      items.forEach(item => item.classList.remove('active'));
+      if (currentFocus >= items.length) currentFocus = 0;
+      if (currentFocus < 0) currentFocus = (items.length - 1);
+      items[currentFocus].classList.add('active');
+      items[currentFocus].scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  // Função para mandar o Backend calcular o Ranking Oficial
+  function recalcularRanking() {
+    if (!confirm("Isso fará o sistema ler toda a base de Ocorrências para descobrir quais os tipos mais usados e colocá-los no topo do Autocomplete. Quer continuar?")) return;
+
+    showToast("Analisando Ocorrências. Isso pode levar alguns segundos...", "info");
+    document.getElementById("loader").style.display = "flex";
+    document.getElementById("loader").style.opacity = 1;
+    document.getElementById("loader-msg").innerText = "Calculando Ranking de Tipos Documentais...";
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        document.getElementById("loader").style.display = "none";
+        if (res.success) {
+          showToast(`Ranking atualizado com ${res.totalProcessado} itens! A página será recarregada para aplicar.`, "success");
+          // Dá um F5 suave na página para ele puxar do Google os dados frescos
+          setTimeout(() => init(), 1500); 
+        } else {
+          showToast("Erro: " + res.erro, "error");
+        }
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById("loader").style.display = "none";
+        showToast("Falha na conexão: " + err.message, "error");
+      })
+      .atualizarRankingDeTipos();
+  }
+
+  // Adiciona um item fora do padrão 33 no Lote Manual
+  function adicionarItemExtraLoteManual() {
+    const tbody = document.getElementById("lista-lote-manual");
+    const tr = document.createElement("tr");
+    
+    // Calcula qual número colocar na frente (34, 35, etc.)
+    const nextIndex = tbody.children.length + 1;
+
+    tr.innerHTML = `
+      <td style="padding-left: 15px;">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fw-bold text-secondary" style="font-size: 0.9em;">${nextIndex}.</span>
+          <div style="flex: 1; position: relative;">
+            <input type="text" class="form-control form-control-sm manual-nome-item input-tipo-extra" placeholder="Digite o Tipo Documental..." autocomplete="off">
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="d-flex gap-1 align-items-center">
+          <input type="number" class="form-control form-control-sm manual-qtd-item" min="1" placeholder="0">
+          <i class="material-icons text-danger" style="cursor:pointer; opacity:0.6; font-size:18px;" onclick="this.closest('tr').remove()" title="Remover item">close</i>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    // LIGA O MOTOR DE AUTOCOMPLETE VIP NA NOVA LINHA!
+    const inputTipo = tr.querySelector(".input-tipo-extra");
+    setupCustomAutocomplete(inputTipo);
+    
+    // Foca direto para digitar
+    inputTipo.focus();
+    
+    // Joga o scroll pro fundo pra pessoa ver a linha que acabou de criar
+    const modalBody = document.querySelector("#modalLoteManual .table-responsive");
+    modalBody.scrollTop = modalBody.scrollHeight;
+  }
+
+  // Alterna o Modal Lote Manual entre Padrão e Tela Cheia (Lado a Lado)
+  function toggleMaximizeLote() {
+    const modalEl = document.getElementById("modalLoteManual");
+    const dialog = modalEl.querySelector(".modal-dialog");
+    const btnIcon = document.querySelector("#btn-max-lote i");
+    
+    // Se já estiver maximizado, restaura ao normal
+    if (modalEl.classList.contains("is-maximized")) {
+      modalEl.classList.remove("is-maximized");
+      dialog.classList.remove("modal-fullscreen");
+      dialog.classList.add("modal-lg");
+      btnIcon.innerText = "fullscreen"; // Ícone de expandir
+    } 
+    // Se estiver normal, maximiza
+    else {
+      modalEl.classList.add("is-maximized");
+      dialog.classList.remove("modal-lg");
+      dialog.classList.add("modal-fullscreen");
+      btnIcon.innerText = "fullscreen_exit"; // Ícone de encolher
+    }
+  }
+
+/* ==========================================================================
+     MOTOR DO GERADOR DE ETIQUETAS (COMPLEMENTAR / CONVÊNIOS)
+     ========================================================================== */
+  
+  let etiquetasGeradasData = null; // Guarda os dados em memória para quando for imprimir
+
+  // NOVA FUNÇÃO: Limpa os códigos quando muda o Rótulo
+  function aoMudarTipoRotulo() {
+    // 1. Volta o código para a opção vazia ("--")
+    document.getElementById("etiq-codigo-sel").value = "";
+    
+    // 2. Garante que a caixinha manual esteja escondida e vazia
+    document.getElementById("container-codigo-manual").style.display = "none";
+    document.getElementById("container-codigo-sel").style.display = "block";
+    document.getElementById("etiq-codigo-manual").value = "";
+    
+    // 3. Limpa a sugestão de "Nº Inicial" e muda o status
+    document.getElementById("etiq-inicial").value = "";
+    const hintBadge = document.getElementById("etiq-hint");
+    hintBadge.className = "badge bg-light text-secondary border border-secondary";
+    hintBadge.innerText = "Aguardando Código...";
+  }
+
+  // 1. Alterna entre os códigos fixos e a digitação livre no MESMO ESPAÇO
+  function toggleCodigoLivre() {
+    const sel = document.getElementById("etiq-codigo-sel");
+    if (sel.value === "outro") {
+      document.getElementById("container-codigo-sel").style.display = "none";
+      document.getElementById("container-codigo-manual").style.display = "flex";
+      document.getElementById("etiq-codigo-manual").focus();
+    }
+    buscarSugestaoEtiqueta();
+  }
+
+  // 1.5 Botão "X" para cancelar a digitação livre e voltar para a lista
+  function cancelarCodigoLivre() {
+    document.getElementById("container-codigo-manual").style.display = "none";
+    document.getElementById("container-codigo-sel").style.display = "block";
+    
+    // Agora ele volta para a opção vazia e apaga tudo!
+    document.getElementById("etiq-codigo-sel").value = ""; 
+    document.getElementById("etiq-codigo-manual").value = "";
+    
+    // Limpa a sugestão visual
+    document.getElementById("etiq-inicial").value = "";
+    const hintBadge = document.getElementById("etiq-hint");
+    hintBadge.className = "badge bg-light text-secondary border border-secondary";
+    hintBadge.innerText = "Aguardando Código...";
+  }
+
+  // 2. Obtém o código final
+  function getCodigoFinal() {
+    const isManual = document.getElementById("container-codigo-manual").style.display === "flex";
+    return isManual ? document.getElementById("etiq-codigo-manual").value : document.getElementById("etiq-codigo-sel").value;
+  }
+
+  // 3. Busca a sugestão do próximo número na Nuvem
+  function buscarSugestaoEtiqueta() {
+    const tipo = document.getElementById("etiq-tipo").value;
+    const codigo = getCodigoFinal();
+    const hintBadge = document.getElementById("etiq-hint");
+    
+    if (!codigo) return;
+
+    hintBadge.className = "badge bg-light text-warning border border-warning";
+    hintBadge.innerText = "Buscando...";
+
+    google.script.run
+      .withSuccessHandler(function(num) {
+        document.getElementById("etiq-inicial").value = num;
+        hintBadge.className = "badge bg-light text-success border border-success";
+        hintBadge.innerText = "Sugestão OK";
+      })
+      .withFailureHandler(function() {
+        hintBadge.className = "badge bg-light text-danger border border-danger";
+        hintBadge.innerText = "Erro ao buscar";
+      })
+      .obterProximoNumeroEtiqueta(tipo, codigo);
+  }
+
+  // 4. Monta o visual das folhas A4 na tela (Preview Menor e Centralizado)
+  function gerarPreviewEtiquetas() {
+    const tipo = document.getElementById("etiq-tipo").value;
+    const codigo = String(getCodigoFinal()).padStart(2, '0');
+    const inicial = parseInt(document.getElementById("etiq-inicial").value, 10);
+    const qtd = parseInt(document.getElementById("etiq-qtd").value, 10);
+    const layout = parseInt(document.getElementById("etiq-layout").value, 10);
+
+    if (isNaN(inicial) || isNaN(qtd) || qtd < 1) {
+      return showToast("Preencha a Etiqueta Inicial e a Quantidade.", "error");
+    }
+
+    const previewArea = document.getElementById("etiq-preview-area");
+    previewArea.innerHTML = ""; 
+    
+    const final = inicial + qtd - 1;
+    etiquetasGeradasData = { tipo, codigo, inicial, final, quantidade: qtd, layout };
+
+    let currentNumber = inicial;
+    let totalPaginas = Math.ceil(qtd / layout);
+
+    for (let p = 0; p < totalPaginas; p++) {
+      let pageDiv = document.createElement("div");
+      pageDiv.className = `preview-a4-landscape layout-${layout}`;
+      
+      // Zoom para 40% do tamanho real
+      pageDiv.style.transform = "scale(0.40)"; 
+      pageDiv.style.transformOrigin = "top center";
+      
+      // Como o Scale não diminui a "área física" nativa da folha pro HTML, 
+      // usamos uma margem negativa matemática (21cm * 0.60 de sobra = ~12.6cm) 
+      // para puxar os itens de baixo para cima.
+      pageDiv.style.marginBottom = "-12.6cm"; 
+      if (p === 0) pageDiv.style.marginTop = "20px"; // Desgruda a primeira folha do teto
+
+      for (let i = 0; i < layout; i++) {
+        let etiq = document.createElement("div");
+        etiq.className = "etiq-half";
+        
+        if (currentNumber <= etiquetasGeradasData.final) {
+          etiq.innerHTML = `
+            <div class="etiq-header">${tipo}</div>
+            <div class="etiq-code">Código: ${codigo}</div>
+            <div class="etiq-lote">Lote: ${codigo}-${currentNumber}</div>
+            <div style="text-align:left; font-size:1.2rem; font-weight:bold; line-height: 2.2;">
+              ( &nbsp; &nbsp; ) Protocolado<br>
+              ( &nbsp; &nbsp; ) Etiquetado<br>
+              ( &nbsp; &nbsp; ) Digitalizado
+            </div>
+          `;
+          currentNumber++;
+        }
+        pageDiv.appendChild(etiq);
+      }
+      previewArea.appendChild(pageDiv);
+    }
+    
+    document.getElementById("btn-imprimir-etiq").style.display = "block";
+    showToast(`${qtd} etiqueta(s) gerada(s).`, "success");
+  }
+
+  // 5. Cria a janela de impressão real e envia para o papel/PDF
+  function imprimirEtiquetas() {
+    if (!etiquetasGeradasData) return;
+    const { tipo, codigo, inicial, final, quantidade, layout } = etiquetasGeradasData;
+
+    let cols = (layout === 1) ? "1fr" : "1fr 1fr";
+    let rows = (layout === 4) ? "1fr 1fr" : "1fr";
+
+    // Constrói um HTML "Puro" com as regras exatas para a impressora
+    let printHtml = `
+      <html>
+        <head>
+          <title>Impressão de Rótulos - ${tipo}</title>
+          <style>
+            @page { size: A4 landscape; margin: 0; }
+            body { margin: 0; font-family: Arial, sans-serif; background: #fff; }
+            .page { 
+              width: 297mm; height: 210mm; 
+              display: grid; 
+              grid-template-columns: ${cols}; 
+              grid-template-rows: ${rows}; 
+              page-break-after: always; 
+              padding: 10mm; 
+              box-sizing: border-box; 
+            }
+            .etiq { 
+              display: flex; flex-direction: column; 
+              justify-content: center; align-items: center; 
+              border: 0.5mm dashed #ccc; 
+              overflow: hidden; 
+              padding: 20px;
+              box-sizing: border-box;
+            }
+            
+            /* PROPORÇÕES CORRIGIDAS PARA A IMPRESSORA */
+            .h { font-size: 38pt; font-weight: 900; text-transform: uppercase; margin-bottom: 20pt; color: #000; }
+            .c { font-size: 20pt; font-weight: bold; margin-bottom: 12pt; color: #333; }
+            .l { font-size: 40pt; font-weight: 900; white-space: nowrap; margin-bottom: 35pt; color: #000; }
+            .f { font-size: 18pt; font-weight: bold; line-height: 2.2; text-align: left; width: 60%; color: #000; }
+          </style>
+        </head>
+        <body>
+    `;
+
+    let cur = inicial;
+    let pgs = Math.ceil(quantidade / layout);
+
+    for (let p = 0; p < pgs; p++) {
+      printHtml += `<div class="page">`;
+      for (let i = 0; i < layout; i++) {
+        printHtml += `<div class="etiq">`;
+        if (cur <= final) {
+          printHtml += `
+            <div class="h">${tipo}</div>
+            <div class="c">Código: ${codigo}</div>
+            <div class="l">Lote: ${codigo}-${cur}</div>
+            <div class="f">
+              ( &nbsp; &nbsp; &nbsp; ) Protocolado<br>
+              ( &nbsp; &nbsp; &nbsp; ) Etiquetado<br>
+              ( &nbsp; &nbsp; &nbsp; ) Digitalizado
+            </div>
+          `;
+          cur++;
+        }
+        printHtml += `</div>`;
+      }
+      printHtml += `</div>`;
+    }
+    
+    printHtml += `</body></html>`;
+    
+    // Abre a janela "invisível" para imprimir
+    const win = window.open('', '_blank');
+    win.document.write(printHtml);
+    win.document.close();
+    
+    // Espera o navegador renderizar a tela nova antes de chamar o popup da impressora
+    setTimeout(() => { 
+      win.focus(); 
+      win.print(); 
+      win.close(); 
+      registrarLogDeImpressao(); 
+    }, 500);
+  }
+
+  // 6. Oculto: Salva o Log após o print ser disparado
+  function registrarLogDeImpressao() {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if(res.success) {
+          showToast("Impressão registrada no Histórico com sucesso!", "success");
+          buscarSugestaoEtiqueta(); // Atualiza a sugestão para a próxima rodada
+        }
+      })
+      .salvarLogEtiquetas(etiquetasGeradasData);
+  }
+
+  /* ==========================================================================
+     HISTÓRICO DE ETIQUETAS (MODAL)
+     ========================================================================== */
+  function abrirModalHistoricoEtiquetas() {
+    const tbody = document.getElementById("lista-historico-etiquetas");
+    
+    // Mostra o modal na tela usando o Bootstrap
+    const modalHistorico = new bootstrap.Modal(document.getElementById('modalHistoricoEtiquetas'));
+    modalHistorico.show();
+
+    // Coloca mensagem de carregamento
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="py-4 text-muted">
+          <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div>
+          Buscando histórico na nuvem...
+        </td>
+      </tr>
+    `;
+
+    // Chama o backend
+    google.script.run
+      .withSuccessHandler(function(historico) {
+        if (historico.erro) {
+          tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-danger">Erro: ${historico.erro}</td></tr>`;
+          return;
+        }
+        
+        if (historico.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" class="py-5 text-muted">
+                <i class="material-icons opacity-25 d-block mb-2" style="font-size: 40px;">assignment_late</i>
+                Nenhum histórico de impressão encontrado.
+              </td>
+            </tr>`;
+          return;
+        }
+
+        // Monta a tabela
+        let html = "";
+        historico.forEach(item => {
+          html += `
+            <tr>
+              <td class="text-muted small fw-semibold">${item.data}</td>
+              <td class="fw-bold text-dark">${item.tipo}</td>
+              <td class="text-primary fw-bold">${item.codigo}</td>
+              <td><span class="badge bg-light text-secondary border">${item.inicial}</span></td>
+              <td><span class="badge bg-light text-secondary border">${item.final}</span></td>
+              <td><span class="badge bg-info text-white fw-bold">${item.qtd}</span></td>
+            </tr>
+          `;
+        });
+        
+        tbody.innerHTML = html;
+      })
+      .withFailureHandler(function() {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-danger fw-bold">Falha na conexão com o servidor.</td></tr>`;
+      })
+      .obterHistoricoEtiquetas();
+  }
+
+/* ==========================================================================
+   INICIALIZADOR SOB DEMANDA DA BIBLIOTECA PDF (LAZY LOAD)
+   ========================================================================== */
+let pdfStudioInicializado = false;
+
+function abrirEstudioPdf(botaoMenu) {
+  nav('tab-ferramentas', botaoMenu);
+  
+  if (pdfStudioInicializado) {
+    window.dispatchEvent(new Event('resize'));
+    return;
+  }
+  
+  const renderZone = document.getElementById('pdf-render-zone');
+  renderZone.innerHTML = '<div class="w-100 d-flex flex-column align-items-center justify-content-center p-5 text-muted"><div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div><h5>Despertando o Estúdio PDF...</h5></div>';
+
+  setTimeout(() => {
+    const rawSource = document.getElementById('pdf-raw-source');
+    if (!renderZone || !rawSource) return;
+    
+    renderZone.innerHTML = rawSource.innerHTML;
+    
+    const scripts = renderZone.querySelectorAll("script");
+    scripts.forEach(oldScript => {
+      const newScript = document.createElement("script");
+      Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+      newScript.text = oldScript.text;
+      oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+    
+    pdfStudioInicializado = true;
+    
+    // 🟢 A CHAVE NA IGNIÇÃO: Espera 150ms para o script injetado ser lido e liga o motor!
+    setTimeout(() => { 
+      if (typeof window.PDF_STUDIO_INIT === 'function') {
+        window.PDF_STUDIO_INIT(); // Acorda o PDF.js e os eventos de Drag & Drop
+      } else {
+        console.error("Função de inicialização do Estúdio não encontrada.");
+      }
+      window.dispatchEvent(new Event('resize')); 
+    }, 150);
+    
+  }, 50);
+}
+
+</script>
+
+</body>
+</html>

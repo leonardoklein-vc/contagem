@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f6f7f9;
+        margin: 0;
+        padding: 15px;
+        color: #333;
+      }
+      h3 {
+        margin-top: 0;
+        color: #1a73e8;
+        font-size: 16px;
+      }
+      .card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        margin-bottom: 15px;
+      }
+      .btn {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      .btn-primary {
+        background-color: #1a73e8;
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: #1557b0;
+      }
+      .btn-primary:disabled {
+        background-color: #a8c7fa;
+        cursor: not-allowed;
+      }
+      #sheet-list-container {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        padding: 5px;
+        margin: 10px 0;
+        background: #fafafa;
+      }
+      .sheet-item {
+        display: flex;
+        align-items: center;
+        padding: 4px 8px;
+        font-size: 13px;
+      }
+      .sheet-item:hover {
+        background-color: #e8f0fe;
+      }
+      .sheet-item input {
+        margin-right: 10px;
+      }
+      .progress-container {
+        margin-top: 15px;
+        display: none;
+      }
+      .progress-bar-bg {
+        width: 100%;
+        background-color: #e0e0e0;
+        border-radius: 10px;
+        height: 10px;
+        overflow: hidden;
+      }
+      .progress-bar-fill {
+        height: 100%;
+        background-color: #34a853;
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+      .status-text {
+        font-size: 12px;
+        margin-top: 5px;
+        text-align: center;
+        font-weight: 500;
+      }
+      #log-area {
+        width: 100%;
+        height: 150px;
+        background-color: #2c2c2c;
+        color: #00ff00;
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        padding: 10px;
+        box-sizing: border-box;
+        border-radius: 4px;
+        overflow-y: auto;
+        resize: none;
+        border: none;
+      }
+      .control-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+      .control-row a {
+        font-size: 12px;
+        color: #1a73e8;
+        cursor: pointer;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    
+    <div class="card">
+      <h3>1. Selecione as Guias</h3>
+      <div class="control-row">
+        <span style="font-size:12px; color:#666;">Guias disponíveis:</span>
+        <div>
+          <a onclick="toggleAll(true)">Todas</a> | <a onclick="toggleAll(false)">Nenhuma</a>
+        </div>
+      </div>
+      
+      <div id="sheet-list-container">
+        <div style="padding:10px; text-align:center; color:#999;">Carregando guias...</div>
+      </div>
+
+      <button id="btn-start" class="btn btn-primary" onclick="startProcessing()">
+        INICIAR EXTRAÇÃO
+      </button>
+    </div>
+
+    <div class="card" id="status-card" style="display:none;">
+      <h3>2. Progresso</h3>
+      <div class="progress-container" style="display:block;">
+        <div class="progress-bar-bg">
+          <div id="progress-fill" class="progress-bar-fill"></div>
+        </div>
+        <div id="status-label" class="status-text">Aguardando...</div>
+        <div id="percent-label" class="status-text" style="color:#666;">0%</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>3. Logs de Execução</h3>
+      <textarea id="log-area" readonly>Aguardando início...</textarea>
+    </div>
+
+    <script>
+      var allSheets = [];
+      var selectedSheets = [];
+      var currentIndex = 0;
+
+      window.onload = function() {
+        google.script.run.withSuccessHandler(renderSheetList).obterListaDeAbas();
+      };
+
+      function renderSheetList(sheets) {
+        allSheets = sheets;
+        var container = document.getElementById('sheet-list-container');
+        container.innerHTML = '';
+
+        if (sheets.length === 0) {
+          container.innerHTML = '<div style="padding:10px;">Nenhuma aba encontrada.</div>';
+          return;
+        }
+
+        sheets.forEach(function(sheet, index) {
+          var div = document.createElement('div');
+          div.className = 'sheet-item';
+          div.innerHTML = '<input type="checkbox" id="sheet-'+index+'" value="'+sheet+'" checked> <label for="sheet-'+index+'">'+sheet+'</label>';
+          container.appendChild(div);
+        });
+      }
+
+      function toggleAll(check) {
+        var checkboxes = document.querySelectorAll('#sheet-list-container input[type="checkbox"]');
+        checkboxes.forEach(function(cb) { cb.checked = check; });
+      }
+
+      function log(msg) {
+        var logArea = document.getElementById('log-area');
+        logArea.value += '\n' + msg;
+        logArea.scrollTop = logArea.scrollHeight;
+      }
+
+      function startProcessing() {
+        selectedSheets = [];
+        var checkboxes = document.querySelectorAll('#sheet-list-container input[type="checkbox"]');
+        checkboxes.forEach(function(cb) {
+          if (cb.checked) selectedSheets.push(cb.value);
+        });
+
+        if (selectedSheets.length === 0) {
+          alert("Selecione pelo menos uma guia!");
+          return;
+        }
+
+        document.getElementById('btn-start').disabled = true;
+        document.getElementById('status-card').style.display = 'block';
+        document.getElementById('log-area').value = '--- Iniciando Processo (C a AM) ---';
+        updateProgress(0, "Preparando relatório...");
+
+        google.script.run
+          .withSuccessHandler(function(msg) {
+             log(msg);
+             currentIndex = 0;
+             processNext();
+          })
+          .withFailureHandler(function(err) {
+             log("ERRO FATAL: " + err);
+             document.getElementById('btn-start').disabled = false;
+          })
+          .prepararRelatorio();
+      }
+
+      function processNext() {
+        if (currentIndex >= selectedSheets.length) {
+          updateProgress(100, "Concluído!");
+          log("--- PROCESSO FINALIZADO ---");
+          document.getElementById('btn-start').disabled = false;
+          document.getElementById('btn-start').innerText = "Gerar Novamente";
+          return;
+        }
+
+        var currentSheet = selectedSheets[currentIndex];
+        var progressPercent = Math.round((currentIndex / selectedSheets.length) * 100);
+        
+        updateProgress(progressPercent, "Lendo: " + currentSheet);
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            if (result.success) {
+              log(result.log);
+            } else {
+              log(result.log);
+            }
+            currentIndex++;
+            processNext();
+          })
+          .withFailureHandler(function(err) {
+             log("Erro crítico na aba " + currentSheet + ": " + err);
+             currentIndex++;
+             processNext();
+          })
+          .processarAbaIndividual(currentSheet);
+      }
+
+      function updateProgress(percent, status) {
+        document.getElementById('progress-fill').style.width = percent + '%';
+        document.getElementById('percent-label').innerText = percent + '%';
+        document.getElementById('status-label').innerText = status;
+      }
+    </script>
+  </body>
+</html>
